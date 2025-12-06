@@ -30,12 +30,24 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
 
   const [copied, setCopied] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [audioUnlocking, setAudioUnlocking] = useState(false);
 
   const handleEnableAudio = async (): Promise<void> => {
-    // Use the unlockAudio function from voice.ts
-    await unlockAudio();
-    setAudioEnabled(true);
-    console.log('[ConversationShell] Audio enabled by user interaction');
+    setAudioUnlocking(true);
+    console.log('[ConversationShell] Starting audio unlock...');
+    
+    try {
+      // Use the unlockAudio function from voice.ts
+      await unlockAudio();
+      setAudioEnabled(true);
+      console.log('[ConversationShell] Audio enabled successfully');
+    } catch (error) {
+      console.error('[ConversationShell] Audio unlock failed:', error);
+      // Still set as enabled so banner disappears
+      setAudioEnabled(true);
+    } finally {
+      setAudioUnlocking(false);
+    }
   };
 
   const handleCopyLink = async (): Promise<void> => {
@@ -147,19 +159,21 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
             </div>
             <button
               onClick={() => void handleEnableAudio()}
+              disabled={audioUnlocking}
               style={{
                 padding: '8px 16px',
-                backgroundColor: '#fbbf24',
+                backgroundColor: audioUnlocking ? '#d97706' : '#fbbf24',
                 color: '#78350f',
                 border: 'none',
                 borderRadius: '6px',
-                cursor: 'pointer',
+                cursor: audioUnlocking ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
                 fontWeight: '600',
                 whiteSpace: 'nowrap',
+                opacity: audioUnlocking ? 0.7 : 1,
               }}
             >
-              Aktivieren
+              {audioUnlocking ? 'Aktiviere...' : 'Aktivieren'}
             </button>
           </div>
         )}
