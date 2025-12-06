@@ -37,13 +37,20 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     console.log('[ConversationShell] Starting audio unlock...');
     
     try {
-      // Use the unlockAudio function from voice.ts
-      await unlockAudio();
+      // Simple approach: just play a tiny audio
+      const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+      audio.volume = 0.1;
+      await audio.play();
+      console.log('[ConversationShell] Audio test played successfully');
+      
+      // Small delay to ensure it played
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       setAudioEnabled(true);
       console.log('[ConversationShell] Audio enabled successfully');
     } catch (error) {
       console.error('[ConversationShell] Audio unlock failed:', error);
-      // Still set as enabled so banner disappears
+      // Still set as enabled so user can try manually
       setAudioEnabled(true);
     } finally {
       setAudioUnlocking(false);
