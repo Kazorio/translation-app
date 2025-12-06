@@ -1,9 +1,42 @@
+'use client';
+
 import type { JSX } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 
 export default function Home(): JSX.Element {
   // Fixed room ID for easy access during development
   const fixedRoomId = 'demo-room-v3';
+  const [testResult, setTestResult] = useState<string>('');
+
+  const testAudio = async (): Promise<void> => {
+    setTestResult('Teste Audio...');
+    
+    try {
+      // Test Browser TTS
+      if (window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance('Hallo! Audio Test erfolgreich!');
+        utterance.lang = 'de-DE';
+        utterance.volume = 1;
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        
+        utterance.onend = () => {
+          setTestResult('✅ Audio funktioniert!');
+        };
+        
+        utterance.onerror = (error) => {
+          setTestResult(`❌ Fehler: ${error.error}`);
+        };
+        
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setTestResult('❌ Browser unterstützt kein TTS');
+      }
+    } catch (error) {
+      setTestResult(`❌ Fehler: ${error}`);
+    }
+  };
 
   return (
     <main className="landing-page">
@@ -17,6 +50,37 @@ export default function Home(): JSX.Element {
       </section>
 
       <section className="actions">
+        <button
+          onClick={testAudio}
+          style={{
+            padding: '16px 32px',
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '18px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            marginBottom: '16px',
+            width: '100%',
+            maxWidth: '400px',
+          }}
+        >
+          🔊 Audio Test (klick mich!)
+        </button>
+        
+        {testResult && (
+          <p style={{
+            padding: '12px',
+            backgroundColor: testResult.includes('✅') ? '#d1fae5' : '#fee2e2',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            fontWeight: '500',
+          }}>
+            {testResult}
+          </p>
+        )}
+        
         <Link href={`/room/${fixedRoomId}`} className="btn-primary">
           Demo-Raum beitreten
         </Link>
