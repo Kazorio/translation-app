@@ -74,13 +74,6 @@ export const speak = async (
     return;
   }
 
-  // FOR MOBILE: Use browser TTS directly (more reliable)
-  // OpenAI TTS often fails on mobile browsers
-  console.log('[Audio] Using browser TTS for mobile compatibility');
-  await fallbackToSpeechSynthesis(text, language);
-  return;
-
-  /* DISABLED: OpenAI TTS - uncomment if needed
   // Ensure AudioContext is ready
   if (!audioContext) {
     initAudioContext();
@@ -132,7 +125,6 @@ export const speak = async (
     console.warn('OpenAI TTS failed, falling back to browser TTS:', error);
     await fallbackToSpeechSynthesis(text, language);
   }
-  */
 };
 
 /**
