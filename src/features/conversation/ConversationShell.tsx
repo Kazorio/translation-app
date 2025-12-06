@@ -32,8 +32,15 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
 
   const handleEnableAudio = (): void => {
     // This user interaction allows AudioContext to be created
-    setAudioEnabled(true);
-    console.log('[ConversationShell] Audio enabled by user interaction');
+    // Play a silent audio file to unlock audio playback on mobile
+    const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+    audio.play().then(() => {
+      console.log('[ConversationShell] Audio unlocked successfully');
+      setAudioEnabled(true);
+    }).catch((err) => {
+      console.warn('[ConversationShell] Audio unlock failed:', err);
+      setAudioEnabled(true); // Set anyway, user clicked
+    });
   };
 
   const handleCopyLink = async (): Promise<void> => {
