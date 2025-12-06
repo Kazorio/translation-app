@@ -13,6 +13,17 @@ RUN npm ci
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Accept build arguments for Next.js build
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG OPENAI_API_KEY
+
+# Make them available as environment variables during build
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
