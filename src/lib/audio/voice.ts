@@ -62,8 +62,9 @@ if (isClient) {
 }
 
 /**
- * Plays audio using OpenAI Text-to-Speech API via Next.js API route.
- * Falls back to browser's SpeechSynthesis if API fails.
+ * Plays audio using browser's SpeechSynthesis API.
+ * This is the most reliable method for mobile browsers.
+ * Uses the same pattern as the working "Audio aktiviert" button.
  */
 export const speak = async (
   text: string,
@@ -74,80 +75,31 @@ export const speak = async (
     return;
   }
 
-  // Ensure AudioContext is ready
-  if (!audioContext) {
-    initAudioContext();
-  }
-  
-  // Resume if suspended
-  if (audioContext && audioContext.state === 'suspended') {
-    await audioContext.resume();
-  }
-
-  try {
-    const response = await fetch('/api/tts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text }),
-    });
-
-    if (!response.ok) {
-      throw new Error('TTS request failed');
-    }
-
-    const audioBlob = await response.blob();
-    const audioUrl = URL.createObjectURL(audioBlob);
-
-    const audio = new Audio(audioUrl);
-    
-    // Try to play - this should work after user interaction
-    try {
-      await audio.play();
-    } catch (playError) {
-      console.warn('[Audio] Play blocked, trying to resume AudioContext:', playError);
-      if (audioContext) {
-        await audioContext.resume();
-        await audio.play(); // Retry
-      } else {
-        throw playError;
-      }
-    }
-
-    await new Promise<void>((resolve) => {
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        resolve();
-      };
-    });
-  } catch (error) {
-    console.warn('OpenAI TTS failed, falling back to browser TTS:', error);
-    await fallbackToSpeechSynthesis(text, language);
-  }
-};
-
-/**
- * Fallback to browser's built-in SpeechSynthesis API.
- */
-const fallbackToSpeechSynthesis = async (
-  text: string,
-  language: LanguageOption,
-): Promise<void> => {
   if (!window.speechSynthesis) {
     console.warn('Speech Synthesis API ist nicht verfügbar.');
     return;
   }
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = language.locale;
-  utterance.rate = 1;
-  utterance.pitch = 1;
-  utterance.volume = 1;
+  console.log('[Audio] Speaking:', text.substring(0, 50), 'in', language.locale);
 
-  await new Promise<void>((resolve) => {
-    utterance.onend = () => resolve();
-    window.speechSynthesis.cancel();
+  return new Promise<void>((resolve) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language.locale;
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    utterance.onend = () => {
+      console.log('[Audio] Finished speaking');
+      resolve();
+    };
+
+    utterance.onerror = (error) => {
+      console.error('[Audio] Speech error:', error);
+      resolve(); // Resolve anyway to not block
+    };
+
+    window.speechSynthesis.cancel(); // Cancel any ongoing speech
     window.speechSynthesis.speak(utterance);
   });
 };
