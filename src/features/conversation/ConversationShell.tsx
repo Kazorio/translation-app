@@ -9,7 +9,6 @@ import { ConversationLog } from '@/components/conversation/ConversationLog';
 import { LanguageSelector } from '@/components/conversation/LanguageSelector';
 import { SpeakerConsole } from '@/components/conversation/SpeakerConsole';
 import { StatusIndicator } from '@/components/conversation/StatusIndicator';
-import { unlockAudio } from '@/lib/audio/voice';
 
 interface Props {
   roomId: string;
