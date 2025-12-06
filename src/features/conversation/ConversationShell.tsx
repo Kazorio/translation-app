@@ -22,52 +22,15 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     errorMessage,
     myLanguage,
     userCount,
+    audioEnabled,
+    audioUnlocking,
     retranslatingIds,
     updateMyLanguage,
     triggerUtterance,
+    enableAudio,
   } = useConversationController(roomId);
 
   const [copied, setCopied] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(false);
-  const [audioUnlocking, setAudioUnlocking] = useState(false);
-
-  const handleEnableAudio = async (): Promise<void> => {
-    setAudioUnlocking(true);
-    console.log('[ConversationShell] Starting audio unlock...');
-    
-    try {
-      // Same code that works on homepage
-      if (window.speechSynthesis) {
-        const utterance = new SpeechSynthesisUtterance('Audio aktiviert');
-        utterance.lang = myLanguage?.locale || 'de-DE';
-        utterance.volume = 1;
-        utterance.rate = 1;
-        utterance.pitch = 1;
-        
-        utterance.onend = () => {
-          console.log('[ConversationShell] Audio unlocked successfully');
-          setAudioEnabled(true);
-          setAudioUnlocking(false);
-        };
-        
-        utterance.onerror = (error) => {
-          console.error('[ConversationShell] Audio unlock error:', error);
-          setAudioEnabled(true);
-          setAudioUnlocking(false);
-        };
-        
-        window.speechSynthesis.speak(utterance);
-      } else {
-        console.warn('[ConversationShell] Browser does not support TTS');
-        setAudioEnabled(true);
-        setAudioUnlocking(false);
-      }
-    } catch (error) {
-      console.error('[ConversationShell] Audio unlock failed:', error);
-      setAudioEnabled(true);
-      setAudioUnlocking(false);
-    }
-  };
 
   const handleCopyLink = async (): Promise<void> => {
     const url = window.location.href;
@@ -77,7 +40,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     
     // Also enable audio on first interaction
     if (!audioEnabled) {
-      await handleEnableAudio();
+      await enableAudio();
     }
   };
 
@@ -135,7 +98,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
             selected={myLanguage}
             onChange={(lang) => {
               updateMyLanguage(lang);
-              if (!audioEnabled) void handleEnableAudio();
+              if (!audioEnabled) void enableAudio();
             }}
           />
         </div>
@@ -177,7 +140,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
               🔊 Klicke hier um Audio-Wiedergabe zu aktivieren
             </div>
             <button
-              onClick={() => void handleEnableAudio()}
+              onClick={() => void enableAudio()}
               disabled={audioUnlocking}
               style={{
                 padding: '8px 16px',

@@ -23,10 +23,13 @@ interface ConversationController {
   errorMessage: string | null;
   myLanguage: LanguageOption | null;
   userCount: number;
+  audioEnabled: boolean;
+  audioUnlocking: boolean;
   updateMyLanguage: (language: LanguageOption) => void;
   triggerUtterance: (speaker: SpeakerRole, audioBlob: Blob) => Promise<void>;
   clearTranscript: () => void;
   retranslatingIds: Set<string>; // Track entries being retranslated
+  enableAudio: () => Promise<void>;
 }
 
 export const useConversationController = (roomId: string): ConversationController => {
@@ -36,10 +39,18 @@ export const useConversationController = (roomId: string): ConversationControlle
   const [activeSpeaker, setActiveSpeaker] = useState<SpeakerRole | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [userCount, setUserCount] = useState<number>(0);
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
+  const [audioUnlocking, setAudioUnlocking] = useState<boolean>(false);
+  const audioEnabledRef = useRef<boolean>(false);
   const processedTtsIdsRef = useRef<Set<string>>(new Set());
   const entriesRef = useRef<ConversationEntry[]>([]);
   const myEntriesRef = useRef<Set<string>>(new Set()); // Track my own entry IDs
   const [retranslatingIds, setRetranslatingIds] = useState<Set<string>>(new Set());
+
+  // Keep audioEnabledRef in sync with audioEnabled state
+  useEffect(() => {
+    audioEnabledRef.current = audioEnabled;
+  }, [audioEnabled]);
 
   useEffect(() => {
     const loadHistory = async (): Promise<void> => {
@@ -85,8 +96,8 @@ export const useConversationController = (roomId: string): ConversationControlle
           console.log('[useConversationController] Entry already exists, skipping');
         }
         
-        // Play TTS only for NEW messages from others
-        if (isNewEntry && !processedTtsIdsRef.current.has(entry.id) && myLanguage && !isMine) {
+        // Play TTS only for NEW messages from others AND if audio is enabled
+        if (isNewEntry && !processedTtsIdsRef.current.has(entry.id) && myLanguage && !isMine && audioEnabledRef.current) {
           processedTtsIdsRef.current.add(entry.id);
           console.log('[useConversationController] Playing TTS for entry:', entry.id);
           console.log('[useConversationController] Entry targetLanguage:', entry.targetLanguage, 'myLanguage:', myLanguage.code);
@@ -253,6 +264,43 @@ export const useConversationController = (roomId: string): ConversationControlle
     [myLanguage, roomId],
   );
 
+  const enableAudio = useCallback(async (): Promise<void> => {
+    setAudioUnlocking(true);
+    console.log('[useConversationController] Starting audio unlock...');
+    
+    try {
+      if (window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance('Audio aktiviert');
+        utterance.lang = myLanguage?.locale || 'de-DE';
+        utterance.volume = 1;
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        
+        utterance.onend = () => {
+          console.log('[useConversationController] Audio unlocked successfully');
+          setAudioEnabled(true);
+          setAudioUnlocking(false);
+        };
+        
+        utterance.onerror = (error) => {
+          console.error('[useConversationController] Audio unlock error:', error);
+          setAudioEnabled(true);
+          setAudioUnlocking(false);
+        };
+        
+        window.speechSynthesis.speak(utterance);
+      } else {
+        console.warn('[useConversationController] Browser does not support TTS');
+        setAudioEnabled(true);
+        setAudioUnlocking(false);
+      }
+    } catch (error) {
+      console.error('[useConversationController] Audio unlock failed:', error);
+      setAudioEnabled(true);
+      setAudioUnlocking(false);
+    }
+  }, [myLanguage]);
+
   return {
     entries,
     status,
@@ -260,9 +308,12 @@ export const useConversationController = (roomId: string): ConversationControlle
     errorMessage,
     myLanguage,
     userCount,
+    audioEnabled,
+    audioUnlocking,
     retranslatingIds,
     updateMyLanguage,
     triggerUtterance,
     clearTranscript,
+    enableAudio,
   };
 };
