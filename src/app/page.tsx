@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export default function Home(): JSX.Element {
   // Fixed room ID for easy access during development
-  const fixedRoomId = 'demo-room-v2';
+  const fixedRoomId = 'demo-room-v3';
 
   return (
     <main className="landing-page">
