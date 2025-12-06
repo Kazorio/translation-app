@@ -34,7 +34,8 @@ export default function Home(): JSX.Element {
         setTestResult('❌ Browser unterstützt kein TTS');
       }
     } catch (error) {
-      setTestResult(`❌ Fehler: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setTestResult(`❌ Fehler: ${errorMessage}`);
     }
   };
 
