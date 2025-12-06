@@ -62,9 +62,17 @@ if (isClient) {
 }
 
 /**
- * Plays audio using browser's SpeechSynthesis API.
- * This is the most reliable method for mobile browsers.
- * Uses the same pattern as the working "Audio aktiviert" button.
+ * Detects if the device is mobile
+ */
+const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+/**
+ * Plays audio using the best available TTS method:
+ * - Desktop: OpenAI TTS (better quality, more languages)
+ * - Mobile: Browser TTS (more reliable with autoplay restrictions)
  */
 export const speak = async (
   text: string,
@@ -75,6 +83,80 @@ export const speak = async (
     return;
   }
 
+  const isMobile = isMobileDevice();
+  console.log('[Audio] Device type:', isMobile ? 'Mobile' : 'Desktop');
+
+  // Use browser TTS on mobile for reliability
+  if (isMobile) {
+    console.log('[Audio] Using browser TTS for mobile');
+    return useBrowserTTS(text, language);
+  }
+
+  // Try OpenAI TTS on desktop, fallback to browser TTS
+  try {
+    console.log('[Audio] Trying OpenAI TTS for desktop');
+    await useOpenAITTS(text, language);
+  } catch (error) {
+    console.warn('[Audio] OpenAI TTS failed, falling back to browser TTS:', error);
+    return useBrowserTTS(text, language);
+  }
+};
+
+/**
+ * Uses OpenAI Text-to-Speech API via Next.js API route
+ */
+const useOpenAITTS = async (
+  text: string,
+  language: LanguageOption,
+): Promise<void> => {
+  // Ensure AudioContext is ready
+  if (!audioContext) {
+    initAudioContext();
+  }
+  
+  // Resume if suspended
+  if (audioContext && audioContext.state === 'suspended') {
+    await audioContext.resume();
+  }
+
+  const response = await fetch('/api/tts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!response.ok) {
+    throw new Error('TTS request failed');
+  }
+
+  const audioBlob = await response.blob();
+  const audioUrl = URL.createObjectURL(audioBlob);
+
+  const audio = new Audio(audioUrl);
+  
+  await audio.play();
+
+  await new Promise<void>((resolve, reject) => {
+    audio.onended = () => {
+      URL.revokeObjectURL(audioUrl);
+      resolve();
+    };
+    audio.onerror = (error) => {
+      URL.revokeObjectURL(audioUrl);
+      reject(error);
+    };
+  });
+};
+
+/**
+ * Uses browser's built-in Speech Synthesis API
+ */
+const useBrowserTTS = async (
+  text: string,
+  language: LanguageOption,
+): Promise<void> => {
   if (!window.speechSynthesis) {
     console.warn('Speech Synthesis API ist nicht verfügbar.');
     return;
