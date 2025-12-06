@@ -9,6 +9,7 @@ import { ConversationLog } from '@/components/conversation/ConversationLog';
 import { LanguageSelector } from '@/components/conversation/LanguageSelector';
 import { SpeakerConsole } from '@/components/conversation/SpeakerConsole';
 import { StatusIndicator } from '@/components/conversation/StatusIndicator';
+import { unlockAudio } from '@/lib/audio/voice';
 
 interface Props {
   roomId: string;
@@ -30,17 +31,11 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
   const [copied, setCopied] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
 
-  const handleEnableAudio = (): void => {
-    // This user interaction allows AudioContext to be created
-    // Play a silent audio file to unlock audio playback on mobile
-    const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-    audio.play().then(() => {
-      console.log('[ConversationShell] Audio unlocked successfully');
-      setAudioEnabled(true);
-    }).catch((err) => {
-      console.warn('[ConversationShell] Audio unlock failed:', err);
-      setAudioEnabled(true); // Set anyway, user clicked
-    });
+  const handleEnableAudio = async (): Promise<void> => {
+    // Use the unlockAudio function from voice.ts
+    await unlockAudio();
+    setAudioEnabled(true);
+    console.log('[ConversationShell] Audio enabled by user interaction');
   };
 
   const handleCopyLink = async (): Promise<void> => {
@@ -51,7 +46,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     
     // Also enable audio on first interaction
     if (!audioEnabled) {
-      handleEnableAudio();
+      await handleEnableAudio();
     }
   };
 
@@ -109,7 +104,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
             selected={myLanguage}
             onChange={(lang) => {
               updateMyLanguage(lang);
-              if (!audioEnabled) handleEnableAudio();
+              if (!audioEnabled) void handleEnableAudio();
             }}
           />
         </div>
@@ -151,7 +146,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
               🔊 Klicke hier um Audio-Wiedergabe zu aktivieren
             </div>
             <button
-              onClick={handleEnableAudio}
+              onClick={() => void handleEnableAudio()}
               style={{
                 padding: '8px 16px',
                 backgroundColor: '#fbbf24',
