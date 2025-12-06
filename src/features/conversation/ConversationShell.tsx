@@ -36,20 +36,27 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     console.log('[ConversationShell] Starting audio unlock...');
     
     try {
-      // Simple approach: just play a tiny audio
+      // Test 1: Play silent audio
       const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
       audio.volume = 0.1;
       await audio.play();
-      console.log('[ConversationShell] Audio test played successfully');
+      console.log('[ConversationShell] Silent audio played');
       
-      // Small delay to ensure it played
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Test 2: Try browser TTS directly
+      if (window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance('Audio aktiviert');
+        utterance.lang = myLanguage?.locale || 'de-DE';
+        utterance.volume = 1;
+        window.speechSynthesis.speak(utterance);
+        console.log('[ConversationShell] TTS test spoken');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       setAudioEnabled(true);
       console.log('[ConversationShell] Audio enabled successfully');
     } catch (error) {
       console.error('[ConversationShell] Audio unlock failed:', error);
-      // Still set as enabled so user can try manually
       setAudioEnabled(true);
     } finally {
       setAudioUnlocking(false);
