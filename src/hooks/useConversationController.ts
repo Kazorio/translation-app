@@ -49,6 +49,7 @@ export const useConversationController = (roomId: string): ConversationControlle
   const entriesRef = useRef<ConversationEntry[]>([]);
   const myEntriesRef = useRef<Set<string>>(new Set()); // Track my own entry IDs
   const [retranslatingIds, setRetranslatingIds] = useState<Set<string>>(new Set());
+  const lastUserCountRef = useRef<number>(0); // Debounce user count updates
   
   // Audio queue for managing playback on mobile
   const audioQueue = useAudioQueue();
@@ -212,7 +213,12 @@ export const useConversationController = (roomId: string): ConversationControlle
         }
       },
       (count) => {
-        setUserCount(count);
+        // Only update if count actually changed (debounce)
+        if (count !== lastUserCountRef.current) {
+          console.log('[useConversationController] User count changed:', lastUserCountRef.current, '→', count);
+          lastUserCountRef.current = count;
+          setUserCount(count);
+        }
       }
     );
 

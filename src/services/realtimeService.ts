@@ -47,7 +47,7 @@ export const subscribeToRoom = (
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const userCount = Object.keys(state).length;
-        console.log('[Realtime] Presence sync - user count:', userCount);
+        // Only log significant changes, not every sync
         onPresenceChange(userCount);
       })
       .subscribe(async (status) => {
