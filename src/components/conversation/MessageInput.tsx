@@ -135,7 +135,7 @@ export const MessageInput = ({
               fontFamily: 'inherit',
               fontSize: '15px',
               lineHeight: '1.4',
-              maxHeight: '120px',
+              maxHeight: '63px', // ~3 lines (15px * 1.4 * 3)
               overflowY: 'auto',
             }}
           />

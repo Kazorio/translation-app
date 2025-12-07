@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import type { ConversationEntry, LanguageOption } from '@/types/conversation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, Loader2 } from 'lucide-react';
@@ -13,6 +13,70 @@ interface Props {
   blockedAudioIds?: Set<string>;
   onPlayBlockedAudio?: (id: string) => void;
 }
+
+// Helper function to render text with formatting
+const renderFormattedText = (text: string): ReactNode => {
+  // Split by line breaks first
+  const lines = text.split('\n');
+  
+  return lines.map((line, lineIndex) => {
+    const elements: ReactNode[] = [];
+    let currentText = line;
+    let key = 0;
+
+    // Process bold (**text**) and italic (*text*)
+    const regex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(line)) !== null) {
+      // Add text before match
+      if (match.index > lastIndex) {
+        elements.push(
+          <span key={`text-${lineIndex}-${key++}`}>
+            {line.substring(lastIndex, match.index)}
+          </span>
+        );
+      }
+
+      const matchedText = match[0];
+      if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
+        // Bold text
+        elements.push(
+          <strong key={`bold-${lineIndex}-${key++}`}>
+            {matchedText.slice(2, -2)}
+          </strong>
+        );
+      } else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
+        // Italic text
+        elements.push(
+          <em key={`italic-${lineIndex}-${key++}`}>
+            {matchedText.slice(1, -1)}
+          </em>
+        );
+      }
+
+      lastIndex = regex.lastIndex;
+    }
+
+    // Add remaining text
+    if (lastIndex < line.length) {
+      elements.push(
+        <span key={`text-${lineIndex}-${key++}`}>
+          {line.substring(lastIndex)}
+        </span>
+      );
+    }
+
+    // Return line with line break (except for last line)
+    return (
+      <span key={`line-${lineIndex}`}>
+        {elements.length > 0 ? elements : line}
+        {lineIndex < lines.length - 1 && <br />}
+      </span>
+    );
+  });
+};
 
 export const ConversationLog = ({ entries, myLanguage, retranslatingIds, blockedAudioIds = new Set(), onPlayBlockedAudio }: Props): JSX.Element => {
   const streamRef = useRef<HTMLDivElement>(null);
@@ -235,8 +299,9 @@ export const ConversationLog = ({ entries, myLanguage, retranslatingIds, blocked
                     lineHeight: '1.4', 
                     margin: 0,
                     wordWrap: 'break-word',
+                    whiteSpace: 'pre-wrap', // Preserve line breaks and spaces
                   }}>
-                    {displayText}
+                    {renderFormattedText(displayText)}
                   </p>
                   
                   <time 
