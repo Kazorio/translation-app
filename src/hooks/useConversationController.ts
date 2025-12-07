@@ -28,6 +28,7 @@ interface ConversationController {
   audioUnlocking: boolean;
   updateMyLanguage: (language: LanguageOption) => void;
   triggerUtterance: (speaker: SpeakerRole, audioBlob: Blob) => Promise<void>;
+  sendTextMessage: (text: string) => Promise<void>; // New: Send text message
   clearTranscript: () => void;
   retranslatingIds: Set<string>; // Track entries being retranslated
   enableAudio: () => Promise<void>;
@@ -400,6 +401,85 @@ export const useConversationController = (roomId: string): ConversationControlle
     [myLanguage, roomId],
   );
 
+  const sendTextMessage = useCallback(
+    async (text: string) => {
+      // Check if language is selected
+      if (!myLanguage) {
+        setErrorMessage('Bitte wähle zuerst deine Sprache aus.');
+        setStatus('error');
+        setTimeout(() => {
+          setErrorMessage(null);
+          setStatus('idle');
+        }, 2000);
+        return;
+      }
+      
+      setErrorMessage(null);
+      setActiveSpeaker('self');
+      setStatus('processing');
+
+      const sourceLanguage = myLanguage;
+      
+      // Try to detect target language from recent entries
+      let targetLanguage: LanguageOption = myLanguage; // fallback
+      const recentEntries = entriesRef.current.slice(-5);
+      for (const entry of recentEntries) {
+        if (entry.sourceLanguage && entry.sourceLanguage !== myLanguage.code) {
+          // Found a message from partner in different language
+          targetLanguage = {
+            code: entry.sourceLanguage,
+            label: entry.sourceLanguage,
+            locale: entry.sourceLanguage,
+          };
+          break;
+        }
+      }
+
+      try {
+        const translation = await translateText({
+          text,
+          sourceLanguage,
+          targetLanguage,
+        });
+
+        const newEntry = await insertConversationEntry(
+          roomId,
+          'self',
+          mySpeakerIdRef.current!, // Pass my speaker ID
+          text, // Original text from user
+          translation.translatedText,
+          sourceLanguage.code,
+          targetLanguage.code,
+        );
+
+        // Optimistic update: add entry immediately to local state
+        if (newEntry) {
+          // Mark as processed FIRST (synchronously) to prevent TTS when Realtime event arrives
+          processedTtsIdsRef.current.add(newEntry.id);
+          myEntriesRef.current.add(newEntry.id); // Mark as mine
+          
+          const entryWithOwnership = { ...newEntry, isMine: true };
+          setEntries((prev) => {
+            const exists = prev.some((e) => e.id === newEntry.id);
+            const updated = exists ? prev : [...prev, entryWithOwnership];
+            entriesRef.current = updated; // Keep ref in sync
+            return updated;
+          });
+        }
+
+        setStatus('idle');
+        setActiveSpeaker(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unbekannter Fehler.';
+        setErrorMessage(message);
+        setStatus('error');
+        setActiveSpeaker(null);
+        setTimeout(() => setStatus('idle'), 1200);
+      }
+    },
+    [myLanguage, roomId],
+  );
+
   const enableAudio = useCallback(async (): Promise<void> => {
     setAudioUnlocking(true);
     console.log('[useConversationController] Starting audio unlock... (already enabled:', audioEnabled, ')');
@@ -441,6 +521,7 @@ export const useConversationController = (roomId: string): ConversationControlle
     retranslatingIds,
     updateMyLanguage,
     triggerUtterance,
+    sendTextMessage,
     clearTranscript,
     enableAudio,
     blockedAudioIds: audioQueue.blockedAudioIds,

@@ -9,9 +9,8 @@ import { useConversationController } from '@/hooks/useConversationController';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants/languages';
 import { ConversationLog } from '@/components/conversation/ConversationLog';
 import { LanguageSelector } from '@/components/conversation/LanguageSelector';
-import { SpeakerConsole } from '@/components/conversation/SpeakerConsole';
+import { MessageInput } from '@/components/conversation/MessageInput';
 import { AutoPlayHint } from '@/components/conversation/AutoPlayHint';
-import { AudioPermissionModal } from '@/components/conversation/AudioPermissionModal';
 
 interface Props {
   roomId: string;
@@ -30,6 +29,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     retranslatingIds,
     updateMyLanguage,
     triggerUtterance,
+    sendTextMessage,
     enableAudio,
     blockedAudioIds,
     playBlockedAudio,
@@ -52,6 +52,12 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     // ALWAYS unlock audio on recording (critical for PWA)
     await enableAudio();
     await triggerUtterance('self', audioBlob);
+  };
+
+  const handleSubmitText = async (text: string): Promise<void> => {
+    // ALWAYS unlock audio on user interaction (critical for PWA)
+    await enableAudio();
+    await sendTextMessage(text);
   };
 
   return (
@@ -249,13 +255,11 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
             {audioUnlocking ? 'Aktiviere Audio...' : '🔊 Audio aktivieren für automatische Übersetzung'}
           </motion.button>
         ) : (
-          // Show normal recording console when unlocked
-          <SpeakerConsole
-            role="self"
+          // Show normal message input when unlocked
+          <MessageInput
             language={myLanguage}
-            status={status}
-            isActive={activeSpeaker === 'self'}
-            onSubmit={handleSubmitAudio}
+            onSubmitAudio={handleSubmitAudio}
+            onSubmitText={handleSubmitText}
           />
         )}
       </footer>
