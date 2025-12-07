@@ -62,14 +62,6 @@ if (isClient) {
 }
 
 /**
- * Detects if the device is mobile
- */
-const isMobileDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
-
-/**
  * Plays audio using OpenAI TTS for all devices (Desktop & Mobile)
  * - Better quality and supports all languages including Persian
  * - Audio unlock via "Audio aktivieren" button ensures autoplay works on mobile
