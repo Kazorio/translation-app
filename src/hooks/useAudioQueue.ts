@@ -209,7 +209,9 @@ export const useAudioQueue = (): AudioQueueHook => {
 
     // Play immediately (user gesture = allowed!)
     const audioUrl = URL.createObjectURL(audioBlob);
-    const howl = new Howl({
+    
+    // Create and play Howl (no need to store reference as it auto-plays and cleans up)
+    new Howl({
       src: [audioUrl],
       format: ['mp3', 'wav', 'webm'],
       html5: true,
@@ -234,9 +236,9 @@ export const useAudioQueue = (): AudioQueueHook => {
     console.log('[useAudioQueue] Attempting to unlock audio...');
 
     try {
-      // Use Howler's unlock mechanism
-      // Play a very short silent audio
-      const silentHowl = new Howl({
+      // Use Howler's unlock mechanism - play a very short silent audio
+      // No need to store reference as it auto-plays and cleans up
+      new Howl({
         src: ['data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='],
         volume: 0.01,
         autoplay: true,
