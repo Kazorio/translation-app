@@ -144,7 +144,7 @@ const playOpenAITTS = async (
     };
     audio.onerror = (error) => {
       URL.revokeObjectURL(audioUrl);
-      reject(error);
+      reject(new Error('Audio playback failed', { cause: error }));
     };
   });
 };
