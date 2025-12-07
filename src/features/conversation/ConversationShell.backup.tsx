@@ -3,8 +3,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Users, User, Share2, Check } from 'lucide-react';
 import { useConversationController } from '@/hooks/useConversationController';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants/languages';
 import { ConversationLog } from '@/components/conversation/ConversationLog';
@@ -47,70 +45,53 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: '100vh',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      overflow: 'hidden',
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Fixed Header */}
       <header style={{
-        padding: '12px 16px',
-        borderBottom: 'none',
-        backgroundColor: '#075E54',
+        padding: '16px 20px',
+        borderBottom: '1px solid #e5e7eb',
+        backgroundColor: 'white',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '12px',
+        gap: '16px',
         flexWrap: 'wrap',
         flexShrink: 0,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        zIndex: 10,
       }}>
         <Link 
           href="/"
           style={{
-            padding: '8px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            borderRadius: '50%',
+            padding: '8px 12px',
+            backgroundColor: '#f3f4f6',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
             textDecoration: 'none',
-            color: '#fff',
+            color: '#374151',
             fontSize: '14px',
-            fontWeight: 600,
+            fontWeight: 500,
             display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: '6px',
             transition: 'background-color 0.2s',
           }}
         >
-          <ArrowLeft size={24} />
+          ← Zurück
         </Link>
-        
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          style={{ 
-            padding: '8px 14px',
-            backgroundColor: userCount > 1 ? '#25D366' : '#EA580C',
-            borderRadius: '20px',
-            fontSize: '13px',
-            fontWeight: 600,
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-          }}
-        >
-          {userCount > 1 ? <Users size={16} /> : <User size={16} />}
-          {userCount}
-        </motion.div>
+        <div style={{ 
+          padding: '8px 16px',
+          backgroundColor: userCount > 1 ? '#d1fae5' : '#fee2e2',
+          border: `1px solid ${userCount > 1 ? '#6ee7b7' : '#fca5a5'}`,
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: 500,
+          color: userCount > 1 ? '#065f46' : '#991b1b',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+        }}>
+          <span style={{ fontSize: '16px' }}>{userCount > 1 ? '👥' : '👤'}</span>
+          {userCount} {userCount === 1 ? 'Person' : 'Personen'}
+        </div>
         <div style={{ flex: 1, minWidth: '200px' }}>
           <LanguageSelector
             languages={SUPPORTED_LANGUAGES}
@@ -121,38 +102,23 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
             }}
           />
         </div>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
+        <button
           onClick={handleCopyLink}
           style={{
-            padding: '10px 18px',
-            backgroundColor: copied ? '#25D366' : '#128C7E',
+            padding: '10px 20px',
+            backgroundColor: copied ? '#10b981' : '#3b82f6',
             color: 'white',
             border: 'none',
-            borderRadius: '20px',
+            borderRadius: '8px',
             cursor: 'pointer',
             fontSize: '14px',
-            fontWeight: 600,
+            fontWeight: '500',
             transition: 'background-color 0.2s',
             whiteSpace: 'nowrap',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
           }}
         >
-          {copied ? (
-            <>
-              <Check size={18} />
-              <span>Kopiert!</span>
-            </>
-          ) : (
-            <>
-              <Share2 size={18} />
-              <span>Teilen</span>
-            </>
-          )}
-        </motion.button>
+          {copied ? '✓ Kopiert' : '🔗 Teilen'}
+        </button>
       </header>
 
       {/* Scrollable Chat Area */}
@@ -161,25 +127,19 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
         
         {/* Audio Enable Banner */}
         {!audioEnabled && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              padding: '14px 16px',
-              backgroundColor: '#fef3c7',
-              borderBottom: '1px solid #fbbf24',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-            }}
-          >
-            <div style={{ fontSize: '14px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>🔊</span>
-              <span>Audio aktivieren für Wiedergabe</span>
+          <div style={{
+            padding: '12px 20px',
+            backgroundColor: '#fef3c7',
+            borderBottom: '1px solid #fbbf24',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+          }}>
+            <div style={{ fontSize: '14px', color: '#92400e' }}>
+              🔊 Klicke hier um Audio-Wiedergabe zu aktivieren
             </div>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={() => void enableAudio()}
               disabled={audioUnlocking}
               style={{
@@ -187,18 +147,17 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
                 backgroundColor: audioUnlocking ? '#d97706' : '#fbbf24',
                 color: '#78350f',
                 border: 'none',
-                borderRadius: '10px',
+                borderRadius: '6px',
                 cursor: audioUnlocking ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
-                fontWeight: 700,
+                fontWeight: '600',
                 whiteSpace: 'nowrap',
                 opacity: audioUnlocking ? 0.7 : 1,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               }}
             >
               {audioUnlocking ? 'Aktiviere...' : 'Aktivieren'}
-            </motion.button>
-          </motion.div>
+            </button>
+          </div>
         )}
         
         {errorMessage && (
@@ -211,13 +170,10 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
 
       {/* Fixed Footer with Recording Button */}
       <footer style={{
-        padding: '12px 16px',
-        paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-        borderTop: '1px solid rgba(0,0,0,0.08)',
-        backgroundColor: '#fff',
+        padding: '16px 20px',
+        borderTop: '1px solid #e5e7eb',
+        backgroundColor: 'white',
         flexShrink: 0,
-        boxShadow: '0 -1px 3px rgba(0,0,0,0.06)',
-        zIndex: 10,
       }}>
         <SpeakerConsole
           role="self"

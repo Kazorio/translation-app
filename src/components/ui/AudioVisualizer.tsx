@@ -8,7 +8,7 @@ interface Props {
 }
 
 /**
- * Visualizes audio input as animated waveform bars.
+ * Modern audio visualizer with smooth wave animation
  */
 export const AudioVisualizer = ({ isRecording, stream }: Props): JSX.Element | null => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,7 +33,8 @@ export const AudioVisualizer = ({ isRecording, stream }: Props): JSX.Element | n
     const analyser = audioContext.createAnalyser();
     const source = audioContext.createMediaStreamSource(stream);
 
-    analyser.fftSize = 256;
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.85;
     source.connect(analyser);
     analyserRef.current = analyser;
 
@@ -44,28 +45,46 @@ export const AudioVisualizer = ({ isRecording, stream }: Props): JSX.Element | n
       if (!isRecording) return;
 
       animationRef.current = requestAnimationFrame(draw);
-
       analyser.getByteFrequencyData(dataArray);
 
-      ctx.fillStyle = '#f0f0f0';
+      // Clear with gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#f8fafc');
+      gradient.addColorStop(1, '#f1f5f9');
+      ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const barWidth = (canvas.width / bufferLength) * 2.5;
-      let barHeight;
-      let x = 0;
+      // Draw modern wave bars with rounded tops
+      const barCount = 40;
+      const barWidth = canvas.width / barCount;
+      const centerY = canvas.height / 2;
 
-      for (let i = 0; i < bufferLength; i++) {
-        barHeight = (dataArray[i] / 255) * canvas.height * 0.8;
+      for (let i = 0; i < barCount; i++) {
+        const dataIndex = Math.floor((i / barCount) * bufferLength);
+        const amplitude = dataArray[dataIndex] / 255;
+        const barHeight = amplitude * (canvas.height * 0.7);
 
-        ctx.fillStyle = `rgb(66, 133, 244)`;
-        ctx.fillRect(
-          x,
-          canvas.height - barHeight,
-          barWidth,
+        const x = i * barWidth;
+        
+        // Create gradient for each bar
+        const barGradient = ctx.createLinearGradient(x, centerY - barHeight / 2, x, centerY + barHeight / 2);
+        barGradient.addColorStop(0, '#3b82f6');
+        barGradient.addColorStop(0.5, '#2563eb');
+        barGradient.addColorStop(1, '#1d4ed8');
+        
+        ctx.fillStyle = barGradient;
+        
+        // Draw rounded rectangle
+        const radius = barWidth * 0.3;
+        ctx.beginPath();
+        ctx.roundRect(
+          x + barWidth * 0.15,
+          centerY - barHeight / 2,
+          barWidth * 0.7,
           barHeight,
+          radius
         );
-
-        x += barWidth + 1;
+        ctx.fill();
       }
     };
 
@@ -84,14 +103,16 @@ export const AudioVisualizer = ({ isRecording, stream }: Props): JSX.Element | n
   return (
     <canvas
       ref={canvasRef}
-      width={300}
-      height={60}
+      width={600}
+      height={80}
       style={{
         width: '100%',
-        height: '60px',
-        marginTop: '8px',
-        borderRadius: '4px',
-        border: '1px solid #ddd',
+        maxWidth: '400px',
+        height: '80px',
+        marginTop: '12px',
+        borderRadius: '16px',
+        border: 'none',
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
       }}
     />
   );
