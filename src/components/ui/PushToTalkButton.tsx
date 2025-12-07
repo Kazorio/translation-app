@@ -1,6 +1,5 @@
 'use client';
 
-import clsx from 'clsx';
 import type { JSX } from 'react';
 import type { ConversationStatus } from '@/types/conversation';
 import { Mic, Square, Loader2 } from 'lucide-react';
