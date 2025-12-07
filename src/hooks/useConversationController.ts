@@ -38,7 +38,20 @@ interface ConversationController {
 }
 
 export const useConversationController = (roomId: string): ConversationController => {
-  const [myLanguage, setMyLanguage] = useState<LanguageOption | null>(null);
+  // Initialize language from localStorage immediately (before first render)
+  const [myLanguage, setMyLanguage] = useState<LanguageOption | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('myLanguage');
+      if (saved) {
+        try {
+          return JSON.parse(saved) as LanguageOption;
+        } catch (e) {
+          console.warn('[useConversationController] Failed to parse saved language:', e);
+        }
+      }
+    }
+    return null;
+  });
   const [status, setStatus] = useState<ConversationStatus>('idle');
   const [entries, setEntries] = useState<ConversationEntry[]>([]);
   const [activeSpeaker, setActiveSpeaker] = useState<SpeakerRole | null>(null);
@@ -57,20 +70,9 @@ export const useConversationController = (roomId: string): ConversationControlle
   // Audio queue for managing playback on mobile
   const audioQueue = useAudioQueue();
 
-  // Load language and speaker ID from localStorage on mount (client-side only, after hydration)
+  // Load speaker ID from localStorage on mount (client-side only, after hydration)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('myLanguage');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as LanguageOption;
-          setMyLanguage(parsed);
-          console.log('[useConversationController] Loaded language from localStorage:', parsed);
-        } catch (e) {
-          console.warn('[useConversationController] Failed to parse saved language:', e);
-        }
-      }
-      
       // Load or create persistent speaker ID
       let speakerId = localStorage.getItem('mySpeakerId');
       if (!speakerId) {
