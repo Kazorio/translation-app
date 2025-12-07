@@ -25,6 +25,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "clsx": "^2.1.1",
+    "emoji-picker-react": "^4.16.1",
     "framer-motion": "^12.23.25",
     "howler": "^2.2.4",
     "lucide-react": "^0.556.0",

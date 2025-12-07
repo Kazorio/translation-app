@@ -1,11 +1,16 @@
 'use client';
 
 import { useState, useRef, type JSX, type KeyboardEvent } from 'react';
-import { motion } from 'framer-motion';
-import { Mic, Send } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mic, Send, Smile } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import type { EmojiClickData } from 'emoji-picker-react';
 import { AudioVisualizer } from '@/components/ui/AudioVisualizer';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import type { LanguageOption } from '@/types/conversation';
+
+// Dynamically import EmojiPicker to avoid SSR issues
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 interface Props {
   language: LanguageOption | null;
@@ -22,6 +27,7 @@ export const MessageInput = ({
     useAudioRecorder();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [textMessage, setTextMessage] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSendText = async (): Promise<void> => {
@@ -56,6 +62,31 @@ export const MessageInput = ({
     }
   };
 
+  const handleEmojiClick = (emojiData: EmojiClickData): void => {
+    const emoji = emojiData.emoji;
+    const textarea = textareaRef.current;
+    
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newText = textMessage.substring(0, start) + emoji + textMessage.substring(end);
+      
+      setTextMessage(newText);
+      
+      // Set cursor position after emoji
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+        textarea.focus();
+        // Trigger resize
+        handleTextChange(newText);
+      }, 0);
+    } else {
+      setTextMessage(textMessage + emoji);
+    }
+    
+    // Don't close picker - let user add multiple emojis
+  };
+
   const handleToggleRecording = (): void => {
     if (isRecording) {
       // Stop and submit
@@ -81,7 +112,7 @@ export const MessageInput = ({
   };
 
   return (
-    <div style={{ width: '100%' }}>
+    <div style={{ width: '100%', position: 'relative' }}>
       {error && (
         <div style={{ 
           color: '#ef4444', 
@@ -101,6 +132,35 @@ export const MessageInput = ({
         </div>
       )}
 
+      {/* Emoji Picker Popup */}
+      <AnimatePresence>
+        {showEmojiPicker && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: 'absolute',
+              bottom: '60px',
+              left: 0,
+              zIndex: 1000,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              borderRadius: '12px',
+              overflow: 'hidden',
+            }}
+          >
+            <EmojiPicker
+              onEmojiClick={handleEmojiClick}
+              width={320}
+              height={400}
+              searchPlaceHolder="Emoji suchen..."
+              previewConfig={{ showPreview: false }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input Container */}
       <div style={{
         display: 'flex',
@@ -108,6 +168,30 @@ export const MessageInput = ({
         gap: '8px',
         width: '100%',
       }}>
+        {/* Emoji Button (left of input) */}
+        {!isRecording && (
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            disabled={isSubmitting || !language}
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              border: 'none',
+              backgroundColor: showEmojiPicker ? '#E5DDD5' : 'transparent',
+              color: '#667781',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: isSubmitting || !language ? 'not-allowed' : 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <Smile size={24} />
+          </motion.button>
+        )}
+
         {/* Text Input */}
         <div style={{
           flex: 1,
