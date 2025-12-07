@@ -63,7 +63,7 @@ export const useConversationController = (roomId: string): ConversationControlle
       const saved = localStorage.getItem('myLanguage');
       if (saved) {
         try {
-          const parsed = JSON.parse(saved);
+          const parsed = JSON.parse(saved) as LanguageOption;
           setMyLanguage(parsed);
           console.log('[useConversationController] Loaded language from localStorage:', parsed);
         } catch (e) {
