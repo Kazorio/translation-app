@@ -48,7 +48,8 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     <div style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      height: '100vh',
+      height: '100dvh',
+      minHeight: '-webkit-fill-available',
       position: 'fixed',
       top: 0,
       left: 0,
@@ -195,12 +196,12 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
       {/* Fixed Footer with Recording Button */}
       <footer style={{
         padding: '10px 12px',
-        paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+        paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
         borderTop: '1px solid rgba(0,0,0,0.08)',
         backgroundColor: '#fff',
         flexShrink: 0,
         boxShadow: '0 -1px 3px rgba(0,0,0,0.06)',
-        zIndex: 10,
+        zIndex: 20,
       }}>
         <SpeakerConsole
           role="self"
