@@ -37,7 +37,7 @@ export const PWAInstallPrompt = () => {
 
     // Check user agent
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
     if (isIOS || isSafari) {
       debug.push('ℹ️ iOS/Safari - use "Add to Home Screen" manually');
       setShowManualInstructions(true);
