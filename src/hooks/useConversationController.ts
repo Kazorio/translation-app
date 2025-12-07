@@ -211,9 +211,11 @@ export const useConversationController = (roomId: string): ConversationControlle
     );
 
     return () => {
+      console.log('[useConversationController] Cleaning up channel');
       void channel.unsubscribe();
     };
-  }, [roomId, myLanguage, audioQueue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]); // Only re-subscribe when roomId changes, not on language change!
 
   const updateMyLanguage = useCallback((language: LanguageOption) => {
     setMyLanguage(language);
