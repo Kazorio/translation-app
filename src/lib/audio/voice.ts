@@ -95,7 +95,7 @@ export const speak = async (
   // Try OpenAI TTS on desktop, fallback to browser TTS
   try {
     console.log('[Audio] Trying OpenAI TTS for desktop');
-    await useOpenAITTS(text, language);
+    await useOpenAITTS(text);
   } catch (error) {
     console.warn('[Audio] OpenAI TTS failed, falling back to browser TTS:', error);
     return useBrowserTTS(text, language);
@@ -107,7 +107,6 @@ export const speak = async (
  */
 const useOpenAITTS = async (
   text: string,
-  language: LanguageOption,
 ): Promise<void> => {
   // Ensure AudioContext is ready
   if (!audioContext) {
