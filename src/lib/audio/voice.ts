@@ -70,9 +70,9 @@ const isMobileDevice = (): boolean => {
 };
 
 /**
- * Plays audio using the best available TTS method:
- * - Desktop: OpenAI TTS (better quality, more languages)
- * - Mobile: Browser TTS (more reliable with autoplay restrictions)
+ * Plays audio using OpenAI TTS for all devices (Desktop & Mobile)
+ * - Better quality and supports all languages including Persian
+ * - Audio unlock via "Audio aktivieren" button ensures autoplay works on mobile
  */
 export const speak = async (
   text: string,
@@ -83,23 +83,13 @@ export const speak = async (
     return;
   }
 
-  const isMobile = isMobileDevice();
-  console.log('[Audio] Device type:', isMobile ? 'Mobile' : 'Desktop');
-
-  // Use browser TTS on mobile for reliability
-  if (isMobile) {
-    console.log('[Audio] Using browser TTS for mobile');
-    return playBrowserTTS(text, language);
-  }
-
-  // Try OpenAI TTS on desktop, fallback to browser TTS
-  try {
-    console.log('[Audio] Trying OpenAI TTS for desktop');
-    await playOpenAITTS(text, language);
-  } catch (error) {
-    console.warn('[Audio] OpenAI TTS failed, falling back to browser TTS:', error);
-    return playBrowserTTS(text, language);
-  }
+  console.log('[Audio] Using OpenAI TTS for all devices');
+  
+  // Ensure audio is unlocked first
+  await unlockAudio();
+  
+  // Use OpenAI TTS exclusively
+  await playOpenAITTS(text, language);
 };
 
 /**
@@ -114,9 +104,11 @@ const playOpenAITTS = async (
     initAudioContext();
   }
   
-  // Resume if suspended
+  // Resume if suspended - CRITICAL for mobile
   if (audioContext && audioContext.state === 'suspended') {
+    console.log('[Audio] Resuming suspended AudioContext...');
     await audioContext.resume();
+    console.log('[Audio] AudioContext state after resume:', audioContext.state);
   }
 
   console.log('[Audio] Using OpenAI TTS with voice for language:', language?.code);
@@ -133,7 +125,8 @@ const playOpenAITTS = async (
   });
 
   if (!response.ok) {
-    throw new Error('TTS request failed');
+    const errorText = await response.text();
+    throw new Error(`TTS request failed: ${response.status} - ${errorText}`);
   }
 
   const audioBlob = await response.blob();
@@ -141,14 +134,25 @@ const playOpenAITTS = async (
 
   const audio = new Audio(audioUrl);
   
+  // Wait for audio to be ready before playing
+  await new Promise<void>((resolve) => {
+    audio.onloadeddata = () => {
+      console.log('[Audio] Audio loaded and ready to play');
+      resolve();
+    };
+  });
+  
+  console.log('[Audio] Starting playback...');
   await audio.play();
 
   await new Promise<void>((resolve, reject) => {
     audio.onended = () => {
+      console.log('[Audio] Playback finished');
       URL.revokeObjectURL(audioUrl);
       resolve();
     };
     audio.onerror = (error) => {
+      console.error('[Audio] Playback error:', error);
       URL.revokeObjectURL(audioUrl);
       reject(new Error('Audio playback failed', { cause: error }));
     };
