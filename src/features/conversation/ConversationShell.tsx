@@ -29,6 +29,8 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     updateMyLanguage,
     triggerUtterance,
     enableAudio,
+    blockedAudioIds,
+    playBlockedAudio,
   } = useConversationController(roomId);
 
   const [copied, setCopied] = useState(false);
@@ -199,7 +201,13 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
           </div>
         )}
         
-        <ConversationLog entries={entries} myLanguage={myLanguage} retranslatingIds={retranslatingIds} />
+        <ConversationLog 
+          entries={entries} 
+          myLanguage={myLanguage} 
+          retranslatingIds={retranslatingIds}
+          blockedAudioIds={blockedAudioIds}
+          onPlayBlockedAudio={playBlockedAudio}
+        />
       </div>
 
       {/* Fixed Footer with Recording Button */}

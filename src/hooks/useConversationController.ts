@@ -31,6 +31,8 @@ interface ConversationController {
   clearTranscript: () => void;
   retranslatingIds: Set<string>; // Track entries being retranslated
   enableAudio: () => Promise<void>;
+  blockedAudioIds: Set<string>; // IDs of messages with blocked audio
+  playBlockedAudio: (id: string) => void; // Manually play blocked audio
 }
 
 export const useConversationController = (roomId: string): ConversationController => {
@@ -337,5 +339,7 @@ export const useConversationController = (roomId: string): ConversationControlle
     triggerUtterance,
     clearTranscript,
     enableAudio,
+    blockedAudioIds: audioQueue.blockedAudioIds,
+    playBlockedAudio: audioQueue.playBlockedAudio,
   };
 };

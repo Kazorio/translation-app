@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useCallback, useEffect, useState } from 'react';
+import { Howl } from 'howler';
 
 interface AudioQueueItem {
   id: string;
@@ -16,34 +17,33 @@ interface AudioQueueHook {
   currentItemId: string | null;
   isUnlocked: boolean;
   unlock: () => Promise<boolean>;
+  blockedAudioIds: Set<string>; // IDs of audio that were blocked
+  playBlockedAudio: (id: string) => void; // Manual trigger for blocked audio
 }
 
 /**
  * Hook for managing audio playback queue with mobile browser autoplay support
+ * Uses Howler.js for better mobile compatibility
  */
 export const useAudioQueue = (): AudioQueueHook => {
   const queueRef = useRef<AudioQueueItem[]>([]);
   const isPlayingRef = useRef<boolean>(false);
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const currentHowlRef = useRef<Howl | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentItemId, setCurrentItemId] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const [blockedAudioIds, setBlockedAudioIds] = useState<Set<string>>(new Set());
+  
+  // Store blocked audio for manual playback
+  const blockedAudioMapRef = useRef<Map<string, Blob>>(new Map());
 
-  // Initialize AudioContext on first mount
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !audioContextRef.current) {
-      try {
-        // Type-safe AudioContext initialization with webkit prefix support
-        const AudioContextClass = window.AudioContext || 
-          (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (AudioContextClass) {
-          audioContextRef.current = new AudioContextClass();
-          console.log('[useAudioQueue] AudioContext initialized:', audioContextRef.current.state);
-        }
-      } catch (error) {
-        console.error('[useAudioQueue] Failed to create AudioContext:', error);
-      }
+  /**
+   * Triggers vibration if supported (mobile feedback)
+   */
+  const triggerVibration = useCallback(() => {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([200, 100, 200]); // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms
+      console.log('[useAudioQueue] Vibration triggered');
     }
   }, []);
 
@@ -58,7 +58,7 @@ export const useAudioQueue = (): AudioQueueHook => {
     const item = queueRef.current.shift();
     if (!item) return;
 
-    console.log('[useAudioQueue] Playing audio item:', item.id);
+    console.log('[useAudioQueue] Attempting to play audio item:', item.id);
     isPlayingRef.current = true;
     setIsPlaying(true);
     setCurrentItemId(item.id);
@@ -68,58 +68,95 @@ export const useAudioQueue = (): AudioQueueHook => {
     }
 
     try {
-      // Resume AudioContext if suspended (mobile browsers)
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-        console.log('[useAudioQueue] Resuming suspended AudioContext');
-        await audioContextRef.current.resume();
-      }
-
+      // Convert Blob to URL for Howler
       const audioUrl = URL.createObjectURL(item.audioBlob);
-      const audio = new Audio(audioUrl);
-      currentAudioRef.current = audio;
+      
+      // Create Howl instance
+      const howl = new Howl({
+        src: [audioUrl],
+        format: ['mp3', 'wav', 'webm'], // Support multiple formats
+        html5: true, // Use HTML5 Audio for better mobile support
+        autoplay: false, // We'll trigger manually
+        volume: 1.0,
+        onload: () => {
+          console.log('[useAudioQueue] Audio loaded:', item.id);
+        },
+        onplay: () => {
+          console.log('[useAudioQueue] Audio playback started:', item.id);
+        },
+        onend: () => {
+          console.log('[useAudioQueue] Audio ended:', item.id);
+          URL.revokeObjectURL(audioUrl);
+          currentHowlRef.current = null;
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          setCurrentItemId(null);
 
-      // Set up event handlers
-      audio.onended = () => {
-        console.log('[useAudioQueue] Audio ended:', item.id);
-        URL.revokeObjectURL(audioUrl);
-        currentAudioRef.current = null;
-        isPlayingRef.current = false;
-        setIsPlaying(false);
-        setCurrentItemId(null);
+          if (item.onEnd) {
+            item.onEnd();
+          }
 
-        if (item.onEnd) {
-          item.onEnd();
-        }
+          // Play next in queue
+          setTimeout(() => {
+            void playNext();
+          }, 100);
+        },
+        onloaderror: (id, error) => {
+          console.error('[useAudioQueue] Load error:', item.id, error);
+          URL.revokeObjectURL(audioUrl);
+          currentHowlRef.current = null;
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          setCurrentItemId(null);
 
-        // Play next in queue
-        setTimeout(() => {
-          void playNext();
-        }, 100);
-      };
+          if (item.onError) {
+            item.onError(new Error('Audio load failed'));
+          }
 
-      audio.onerror = (error) => {
-        console.error('[useAudioQueue] Audio error:', error);
-        URL.revokeObjectURL(audioUrl);
-        currentAudioRef.current = null;
-        isPlayingRef.current = false;
-        setIsPlaying(false);
-        setCurrentItemId(null);
+          // Try next item
+          setTimeout(() => {
+            void playNext();
+          }, 100);
+        },
+        onplayerror: (id, error) => {
+          console.error('[useAudioQueue] Play error (BLOCKED?):', item.id, error);
+          
+          // Audio was blocked - store for manual playback
+          blockedAudioMapRef.current.set(item.id, item.audioBlob);
+          setBlockedAudioIds((prev) => new Set(prev).add(item.id));
+          
+          // Trigger vibration as feedback
+          triggerVibration();
+          
+          URL.revokeObjectURL(audioUrl);
+          currentHowlRef.current = null;
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          setCurrentItemId(null);
 
-        if (item.onError) {
-          item.onError(new Error('Audio playback failed'));
-        }
+          if (item.onError) {
+            item.onError(new Error('Audio playback blocked by browser'));
+          }
 
-        // Play next in queue
-        setTimeout(() => {
-          void playNext();
-        }, 100);
-      };
+          // Try next item
+          setTimeout(() => {
+            void playNext();
+          }, 100);
+        },
+      });
+
+      currentHowlRef.current = howl;
 
       // Attempt to play
-      await audio.play();
-      console.log('[useAudioQueue] Audio playback started successfully');
+      howl.play();
     } catch (error) {
-      console.error('[useAudioQueue] Failed to play audio:', error);
+      console.error('[useAudioQueue] Failed to create/play audio:', error);
+      
+      // Store as blocked
+      blockedAudioMapRef.current.set(item.id, item.audioBlob);
+      setBlockedAudioIds((prev) => new Set(prev).add(item.id));
+      triggerVibration();
+      
       isPlayingRef.current = false;
       setIsPlaying(false);
       setCurrentItemId(null);
@@ -133,7 +170,7 @@ export const useAudioQueue = (): AudioQueueHook => {
         void playNext();
       }, 100);
     }
-  }, []);
+  }, [triggerVibration]);
 
   /**
    * Adds an audio item to the queue
@@ -152,6 +189,44 @@ export const useAudioQueue = (): AudioQueueHook => {
   );
 
   /**
+   * Manually play a blocked audio (called from UI tap)
+   */
+  const playBlockedAudio = useCallback((id: string): void => {
+    const audioBlob = blockedAudioMapRef.current.get(id);
+    if (!audioBlob) {
+      console.warn('[useAudioQueue] No blocked audio found for id:', id);
+      return;
+    }
+
+    console.log('[useAudioQueue] Manually playing blocked audio:', id);
+    
+    // Remove from blocked set
+    setBlockedAudioIds((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
+
+    // Play immediately (user gesture = allowed!)
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const howl = new Howl({
+      src: [audioUrl],
+      format: ['mp3', 'wav', 'webm'],
+      html5: true,
+      autoplay: true, // Safe here - user gesture
+      volume: 1.0,
+      onend: () => {
+        URL.revokeObjectURL(audioUrl);
+        blockedAudioMapRef.current.delete(id);
+      },
+      onloaderror: () => {
+        URL.revokeObjectURL(audioUrl);
+        blockedAudioMapRef.current.delete(id);
+      },
+    });
+  }, []);
+
+  /**
    * Unlocks audio playback for mobile browsers
    * Must be called from a user gesture (click, touch)
    */
@@ -159,84 +234,35 @@ export const useAudioQueue = (): AudioQueueHook => {
     console.log('[useAudioQueue] Attempting to unlock audio...');
 
     try {
-      // Resume AudioContext
-      if (audioContextRef.current) {
-        if (audioContextRef.current.state === 'suspended') {
-          await audioContextRef.current.resume();
-          console.log('[useAudioQueue] AudioContext resumed');
-        }
-      }
-
-      // Play a silent audio to unlock (required for iOS)
-      // Create a minimal silent audio blob (0.1 seconds of silence)
-      const sampleRate = 44100;
-      const duration = 0.1;
-      const numChannels = 1;
-      const numSamples = sampleRate * duration;
-      
-      // Create WAV file manually
-      const buffer = new ArrayBuffer(44 + numSamples * 2);
-      const view = new DataView(buffer);
-      
-      // WAV header
-      const writeString = (offset: number, string: string) => {
-        for (let i = 0; i < string.length; i++) {
-          view.setUint8(offset + i, string.charCodeAt(i));
-        }
-      };
-      
-      writeString(0, 'RIFF');
-      view.setUint32(4, 36 + numSamples * 2, true);
-      writeString(8, 'WAVE');
-      writeString(12, 'fmt ');
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true); // PCM
-      view.setUint16(22, numChannels, true);
-      view.setUint32(24, sampleRate, true);
-      view.setUint32(28, sampleRate * numChannels * 2, true);
-      view.setUint16(32, numChannels * 2, true);
-      view.setUint16(34, 16, true);
-      writeString(36, 'data');
-      view.setUint32(40, numSamples * 2, true);
-      
-      // Write silence (all zeros)
-      for (let i = 0; i < numSamples; i++) {
-        view.setInt16(44 + i * 2, 0, true);
-      }
-      
-      const silentBlob = new Blob([buffer], { type: 'audio/wav' });
-      const audioUrl = URL.createObjectURL(silentBlob);
-      const audio = new Audio(audioUrl);
-      
-      // Set volume to very low (but not 0, as that might not unlock)
-      audio.volume = 0.01;
-
-      await new Promise<void>((resolve, reject) => {
-        audio.oncanplaythrough = () => {
-          audio.play()
-            .then(() => {
-              console.log('[useAudioQueue] Silent audio played successfully');
-              setTimeout(() => {
-                URL.revokeObjectURL(audioUrl);
-                resolve();
-              }, 200);
-            })
-            .catch(reject);
-        };
-        
-        audio.onerror = () => {
-          URL.revokeObjectURL(audioUrl);
-          reject(new Error('Failed to play silent audio'));
-        };
+      // Use Howler's unlock mechanism
+      // Play a very short silent audio
+      const silentHowl = new Howl({
+        src: ['data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='],
+        volume: 0.01,
+        autoplay: true,
+        html5: false, // Use Web Audio for unlock
+        onend: () => {
+          console.log('[useAudioQueue] Silent audio played for unlock');
+          setIsUnlocked(true);
+        },
+        onloaderror: (id, error) => {
+          console.warn('[useAudioQueue] Unlock audio load error:', error);
+          setIsUnlocked(true); // Still mark as unlocked to allow attempts
+        },
+        onplayerror: (id, error) => {
+          console.warn('[useAudioQueue] Unlock audio play error:', error);
+          setIsUnlocked(true); // Still mark as unlocked to allow attempts
+        },
       });
 
-      setIsUnlocked(true);
-      console.log('[useAudioQueue] Audio unlocked successfully');
+      // Wait a bit for unlock to process
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      console.log('[useAudioQueue] Audio unlock completed');
       return true;
     } catch (error) {
       console.error('[useAudioQueue] Failed to unlock audio:', error);
-      // Mark as unlocked anyway to allow attempts
-      setIsUnlocked(true);
+      setIsUnlocked(true); // Mark as unlocked anyway to allow attempts
       return false;
     }
   }, []);
@@ -244,13 +270,12 @@ export const useAudioQueue = (): AudioQueueHook => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (currentAudioRef.current) {
-        currentAudioRef.current.pause();
-        currentAudioRef.current = null;
+      if (currentHowlRef.current) {
+        currentHowlRef.current.unload();
+        currentHowlRef.current = null;
       }
-      if (audioContextRef.current) {
-        void audioContextRef.current.close();
-      }
+      // Clean up all blocked audio
+      blockedAudioMapRef.current.clear();
     };
   }, []);
 
@@ -260,5 +285,7 @@ export const useAudioQueue = (): AudioQueueHook => {
     currentItemId,
     isUnlocked,
     unlock,
+    blockedAudioIds,
+    playBlockedAudio,
   };
 };

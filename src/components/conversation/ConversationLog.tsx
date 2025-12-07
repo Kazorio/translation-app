@@ -10,9 +10,11 @@ interface Props {
   entries: ConversationEntry[];
   myLanguage: LanguageOption | null;
   retranslatingIds: Set<string>;
+  blockedAudioIds?: Set<string>;
+  onPlayBlockedAudio?: (id: string) => void;
 }
 
-export const ConversationLog = ({ entries, myLanguage, retranslatingIds }: Props): JSX.Element => {
+export const ConversationLog = ({ entries, myLanguage, retranslatingIds, blockedAudioIds = new Set(), onPlayBlockedAudio }: Props): JSX.Element => {
   const streamRef = useRef<HTMLDivElement>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -174,21 +176,36 @@ export const ConversationLog = ({ entries, myLanguage, retranslatingIds }: Props
                 {!isMine && (
                   <motion.button
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => handlePlayAudio(entry, displayText)}
+                    onClick={() => {
+                      // If audio was blocked, use manual playback
+                      if (blockedAudioIds.has(entry.id) && onPlayBlockedAudio) {
+                        onPlayBlockedAudio(entry.id);
+                      } else {
+                        void handlePlayAudio(entry, displayText);
+                      }
+                    }}
                     style={{
                       width: '32px',
                       height: '32px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: playingId === entry.id ? '#25D366' : '#FFFFFF',
-                      color: playingId === entry.id ? '#FFFFFF' : '#667781',
+                      backgroundColor: blockedAudioIds.has(entry.id) 
+                        ? '#FF6B6B' 
+                        : playingId === entry.id 
+                        ? '#25D366' 
+                        : '#FFFFFF',
+                      color: blockedAudioIds.has(entry.id) || playingId === entry.id ? '#FFFFFF' : '#667781',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      boxShadow: blockedAudioIds.has(entry.id) 
+                        ? '0 2px 8px rgba(255,107,107,0.4)' 
+                        : '0 1px 2px rgba(0,0,0,0.1)',
                       flexShrink: 0,
+                      animation: blockedAudioIds.has(entry.id) ? 'pulse 2s infinite' : 'none',
                     }}
+                    title={blockedAudioIds.has(entry.id) ? '🔊 Tap to Play' : 'Play Audio'}
                   >
                     {loadingId === entry.id ? (
                       <Loader2 size={18} className="animate-spin" />
@@ -243,21 +260,36 @@ export const ConversationLog = ({ entries, myLanguage, retranslatingIds }: Props
                 {isMine && (
                   <motion.button
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => handlePlayAudio(entry, displayText)}
+                    onClick={() => {
+                      // If audio was blocked, use manual playback
+                      if (blockedAudioIds.has(entry.id) && onPlayBlockedAudio) {
+                        onPlayBlockedAudio(entry.id);
+                      } else {
+                        void handlePlayAudio(entry, displayText);
+                      }
+                    }}
                     style={{
                       width: '32px',
                       height: '32px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: playingId === entry.id ? '#25D366' : '#FFFFFF',
-                      color: playingId === entry.id ? '#FFFFFF' : '#667781',
+                      backgroundColor: blockedAudioIds.has(entry.id) 
+                        ? '#FF6B6B' 
+                        : playingId === entry.id 
+                        ? '#25D366' 
+                        : '#FFFFFF',
+                      color: blockedAudioIds.has(entry.id) || playingId === entry.id ? '#FFFFFF' : '#667781',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      boxShadow: blockedAudioIds.has(entry.id) 
+                        ? '0 2px 8px rgba(255,107,107,0.4)' 
+                        : '0 1px 2px rgba(0,0,0,0.1)',
                       flexShrink: 0,
+                      animation: blockedAudioIds.has(entry.id) ? 'pulse 2s infinite' : 'none',
                     }}
+                    title={blockedAudioIds.has(entry.id) ? '🔊 Tap to Play' : 'Play Audio'}
                   >
                     {loadingId === entry.id ? (
                       <Loader2 size={18} className="animate-spin" />
@@ -271,6 +303,18 @@ export const ConversationLog = ({ entries, myLanguage, retranslatingIds }: Props
           })}
         </AnimatePresence>
       </div>
+      
+      {/* CSS Animation for pulsing blocked audio button */}
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.05);
+          }
+        }
+      `}</style>
     </section>
   );
 };
