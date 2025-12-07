@@ -236,8 +236,21 @@ export const useAudioQueue = (): AudioQueueHook => {
     console.log('[useAudioQueue] Attempting to unlock audio...');
 
     try {
-      // Use Howler's unlock mechanism - play a very short silent audio
-      // No need to store reference as it auto-plays and cleans up
+      // Method 1: Resume AudioContext directly (critical for PWA!)
+      if (typeof window !== 'undefined' && 'AudioContext' in window) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          // Check if Howler has a global audio context we can resume
+          const ctx = (Howler as any)?.ctx;
+          if (ctx && ctx.state === 'suspended') {
+            console.log('[useAudioQueue] Resuming suspended AudioContext...');
+            await ctx.resume();
+            console.log('[useAudioQueue] AudioContext resumed, state:', ctx.state);
+          }
+        }
+      }
+
+      // Method 2: Use Howler's unlock mechanism - play a very short silent audio
       new Howl({
         src: ['data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='],
         volume: 0.01,
