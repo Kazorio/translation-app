@@ -32,7 +32,13 @@ export const initializeAudio = (): boolean => {
 
   try {
     // Create AudioContext (works on all modern browsers)
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextConstructor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    
+    if (!AudioContextConstructor) {
+      throw new Error('AudioContext not supported');
+    }
+    
+    audioContext = new AudioContextConstructor();
     
     // On iOS/Safari, the context might be suspended until user interaction
     if (audioContext.state === 'suspended') {
