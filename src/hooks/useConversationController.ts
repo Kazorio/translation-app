@@ -56,20 +56,26 @@ export const useConversationController = (roomId: string): ConversationControlle
   // Keep audioEnabledRef in sync with audioEnabled state
   useEffect(() => {
     audioEnabledRef.current = audioEnabled;
+    // Persist audio state to localStorage
+    if (audioEnabled) {
+      localStorage.setItem('audioEnabled', 'true');
+    }
   }, [audioEnabled]);
 
-  // Auto-enable audio on desktop (viewport > 768px)
+  // Auto-enable audio on first load if previously enabled OR on desktop
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const wasEnabled = localStorage.getItem('audioEnabled') === 'true';
       const isDesktop = window.innerWidth > 768;
-      if (isDesktop && !audioEnabled) {
-        console.log('[useConversationController] Desktop detected, auto-enabling audio');
+      
+      if ((wasEnabled || isDesktop) && !audioEnabled) {
+        console.log('[useConversationController] Auto-enabling audio (wasEnabled:', wasEnabled, 'isDesktop:', isDesktop, ')');
         setAudioEnabled(true);
         // Try to unlock immediately
         void audioQueue.unlock();
       }
     }
-  }, [audioQueue, audioEnabled]);
+  }, [audioQueue]); // Only run once on mount
 
   useEffect(() => {
     const loadHistory = async (): Promise<void> => {
