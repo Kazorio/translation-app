@@ -34,9 +34,13 @@ export const useAudioQueue = (): AudioQueueHook => {
   useEffect(() => {
     if (typeof window !== 'undefined' && !audioContextRef.current) {
       try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        audioContextRef.current = new AudioContextClass();
-        console.log('[useAudioQueue] AudioContext initialized:', audioContextRef.current.state);
+        // Type-safe AudioContext initialization with webkit prefix support
+        const AudioContextClass = window.AudioContext || 
+          (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioContextClass) {
+          audioContextRef.current = new AudioContextClass();
+          console.log('[useAudioQueue] AudioContext initialized:', audioContextRef.current.state);
+        }
       } catch (error) {
         console.error('[useAudioQueue] Failed to create AudioContext:', error);
       }

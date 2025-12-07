@@ -198,7 +198,7 @@ export const useConversationController = (roomId: string): ConversationControlle
     return () => {
       void channel.unsubscribe();
     };
-  }, [roomId, myLanguage]);
+  }, [roomId, myLanguage, audioQueue]);
 
   const updateMyLanguage = useCallback((language: LanguageOption) => {
     setMyLanguage(language);
