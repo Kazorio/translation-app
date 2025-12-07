@@ -39,9 +39,18 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     
+    // Unlock audio on this user interaction
     if (!audioEnabled) {
       await enableAudio();
     }
+  };
+
+  const handleSubmitAudio = async (audioBlob: Blob): Promise<void> => {
+    // Unlock audio on first recording (mobile support)
+    if (!audioEnabled) {
+      await enableAudio();
+    }
+    await triggerUtterance('self', audioBlob);
   };
 
   return (
@@ -208,7 +217,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
           language={myLanguage}
           status={status}
           isActive={activeSpeaker === 'self'}
-          onSubmit={(audioBlob) => triggerUtterance('self', audioBlob)}
+          onSubmit={handleSubmitAudio}
         />
       </footer>
     </div>

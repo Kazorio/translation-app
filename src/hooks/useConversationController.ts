@@ -9,12 +9,13 @@ import type {
 } from '@/types/conversation';
 import { captureUtterance } from '@/services/speechCaptureService';
 import { translateText } from '@/services/translationService';
-import { renderVoiceFeedback } from '@/services/voiceService';
+import { fetchVoiceAudio } from '@/services/voiceService';
 import {
   subscribeToRoom,
   insertConversationEntry,
   fetchRoomHistory,
 } from '@/services/realtimeService';
+import { useAudioQueue } from '@/hooks/useAudioQueue';
 
 interface ConversationController {
   entries: ConversationEntry[];
@@ -46,6 +47,9 @@ export const useConversationController = (roomId: string): ConversationControlle
   const entriesRef = useRef<ConversationEntry[]>([]);
   const myEntriesRef = useRef<Set<string>>(new Set()); // Track my own entry IDs
   const [retranslatingIds, setRetranslatingIds] = useState<Set<string>>(new Set());
+  
+  // Audio queue for managing playback on mobile
+  const audioQueue = useAudioQueue();
 
   // Keep audioEnabledRef in sync with audioEnabled state
   useEffect(() => {
@@ -105,12 +109,32 @@ export const useConversationController = (roomId: string): ConversationControlle
           // Check if the translation is in MY language
           if (entry.targetLanguage === myLanguage.code) {
             // Perfect! Translation is already in my language
-            console.log('[useConversationController] Translation matches my language, playing TTS');
-            void renderVoiceFeedback(entry.translatedText, myLanguage);
+            console.log('[useConversationController] Translation matches my language, enqueueing TTS');
+            void fetchVoiceAudio(entry.translatedText, myLanguage).then((audioBlob) => {
+              audioQueue.enqueue({
+                id: entry.id,
+                audioBlob,
+                onStart: () => console.log('[TTS] Playing:', entry.id),
+                onEnd: () => console.log('[TTS] Finished:', entry.id),
+                onError: (error) => console.error('[TTS] Error:', entry.id, error),
+              });
+            }).catch((error) => {
+              console.error('[useConversationController] Failed to fetch TTS audio:', error);
+            });
           } else if (entry.sourceLanguage === myLanguage.code) {
             // The original text is in my language, play that instead
-            console.log('[useConversationController] Original text is in my language, playing that');
-            void renderVoiceFeedback(entry.originalText, myLanguage);
+            console.log('[useConversationController] Original text is in my language, enqueueing that');
+            void fetchVoiceAudio(entry.originalText, myLanguage).then((audioBlob) => {
+              audioQueue.enqueue({
+                id: entry.id,
+                audioBlob,
+                onStart: () => console.log('[TTS] Playing:', entry.id),
+                onEnd: () => console.log('[TTS] Finished:', entry.id),
+                onError: (error) => console.error('[TTS] Error:', entry.id, error),
+              });
+            }).catch((error) => {
+              console.error('[useConversationController] Failed to fetch TTS audio:', error);
+            });
           } else {
             // Need to translate to my language on-the-fly and UPDATE the entry
             console.log('[useConversationController] Translation mismatch, re-translating to my language');
@@ -141,7 +165,18 @@ export const useConversationController = (roomId: string): ConversationControlle
                 return newSet;
               });
               
-              void renderVoiceFeedback(result.translatedText, myLanguage);
+              // Enqueue TTS for retranslated text
+              void fetchVoiceAudio(result.translatedText, myLanguage).then((audioBlob) => {
+                audioQueue.enqueue({
+                  id: entry.id,
+                  audioBlob,
+                  onStart: () => console.log('[TTS] Playing retranslated:', entry.id),
+                  onEnd: () => console.log('[TTS] Finished retranslated:', entry.id),
+                  onError: (error) => console.error('[TTS] Error retranslated:', entry.id, error),
+                });
+              }).catch((error) => {
+                console.error('[useConversationController] Failed to fetch TTS audio for retranslation:', error);
+              });
             }).catch((error) => {
               console.warn('[useConversationController] Re-translation failed:', error);
               setRetranslatingIds((prev) => {
@@ -269,37 +304,24 @@ export const useConversationController = (roomId: string): ConversationControlle
     console.log('[useConversationController] Starting audio unlock...');
     
     try {
-      if (window.speechSynthesis) {
-        const utterance = new SpeechSynthesisUtterance('Audio aktiviert');
-        utterance.lang = myLanguage?.locale || 'de-DE';
-        utterance.volume = 1;
-        utterance.rate = 1;
-        utterance.pitch = 1;
-        
-        utterance.onend = () => {
-          console.log('[useConversationController] Audio unlocked successfully');
-          setAudioEnabled(true);
-          setAudioUnlocking(false);
-        };
-        
-        utterance.onerror = (error) => {
-          console.error('[useConversationController] Audio unlock error:', error);
-          setAudioEnabled(true);
-          setAudioUnlocking(false);
-        };
-        
-        window.speechSynthesis.speak(utterance);
+      // Use the audio queue unlock mechanism for proper mobile support
+      const success = await audioQueue.unlock();
+      
+      if (success) {
+        console.log('[useConversationController] Audio unlocked successfully via queue');
       } else {
-        console.warn('[useConversationController] Browser does not support TTS');
-        setAudioEnabled(true);
-        setAudioUnlocking(false);
+        console.warn('[useConversationController] Audio unlock reported failure, but continuing');
       }
+      
+      setAudioEnabled(true);
+      setAudioUnlocking(false);
     } catch (error) {
       console.error('[useConversationController] Audio unlock failed:', error);
+      // Still enable audio to allow attempts
       setAudioEnabled(true);
       setAudioUnlocking(false);
     }
-  }, [myLanguage]);
+  }, [audioQueue]);
 
   return {
     entries,

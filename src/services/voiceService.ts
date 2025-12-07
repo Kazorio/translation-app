@@ -1,7 +1,35 @@
 import type { LanguageOption } from '@/types/conversation';
 
 /**
- * Plays audio using OpenAI TTS API (same logic as manual click)
+ * Fetches audio blob from OpenAI TTS API
+ * Returns the blob for use with the audio queue system
+ */
+export const fetchVoiceAudio = async (
+  text: string,
+  language: LanguageOption,
+): Promise<Blob> => {
+  console.log('[voiceService] Fetching TTS for language:', language.code);
+  
+  const response = await fetch('/api/tts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text, language: language.code }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`TTS request failed: ${response.status}`);
+  }
+
+  const audioBlob = await response.blob();
+  console.log('[voiceService] Audio blob fetched successfully');
+  return audioBlob;
+};
+
+/**
+ * Legacy function - plays audio directly (kept for manual click functionality)
+ * For automatic playback, use fetchVoiceAudio with the audio queue instead
  */
 export const renderVoiceFeedback = async (
   text: string,
@@ -10,20 +38,7 @@ export const renderVoiceFeedback = async (
   try {
     console.log('[voiceService] Playing TTS for language:', language.code);
     
-    // Use OpenAI TTS API - same as manual click
-    const response = await fetch('/api/tts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text, language: language.code }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`TTS request failed: ${response.status}`);
-    }
-
-    const audioBlob = await response.blob();
+    const audioBlob = await fetchVoiceAudio(text, language);
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
     
