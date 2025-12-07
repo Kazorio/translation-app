@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, type JSX, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, type JSX, type KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Send, Smile } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -29,6 +29,26 @@ export const MessageInput = ({
   const [textMessage, setTextMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+
+    const handleClickOutside = (event: MouseEvent): void => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
 
   const handleSendText = async (): Promise<void> => {
     if (!textMessage.trim() || !language) return;
@@ -136,6 +156,7 @@ export const MessageInput = ({
       <AnimatePresence>
         {showEmojiPicker && (
           <motion.div
+            ref={emojiPickerRef}
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
