@@ -165,7 +165,7 @@ export const MessageInput = ({
       <div style={{
         display: 'flex',
         alignItems: 'flex-end',
-        gap: '8px',
+        gap: '10px',
         width: '100%',
       }}>
         {/* Emoji Button (left of input) */}
@@ -195,6 +195,7 @@ export const MessageInput = ({
         {/* Text Input */}
         <div style={{
           flex: 1,
+          maxWidth: 'calc(100% - 110px)',
           backgroundColor: '#F0F2F5',
           borderRadius: '24px',
           padding: '8px 16px',

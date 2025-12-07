@@ -218,8 +218,8 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
 
       {/* Fixed Footer with Recording Button OR Audio Enable Button */}
       <footer style={{
-        padding: '10px 12px',
-        paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
+        padding: '16px 12px',
+        paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
         borderTop: '1px solid rgba(0,0,0,0.08)',
         backgroundColor: '#fff',
         flexShrink: 0,
