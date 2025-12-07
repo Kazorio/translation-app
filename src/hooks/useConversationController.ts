@@ -51,9 +51,37 @@ export const useConversationController = (roomId: string): ConversationControlle
   const myEntriesRef = useRef<Set<string>>(new Set()); // Track my own entry IDs
   const [retranslatingIds, setRetranslatingIds] = useState<Set<string>>(new Set());
   const lastUserCountRef = useRef<number>(0); // Debounce user count updates
+  const mySpeakerIdRef = useRef<string | null>(null); // Persistent speaker ID
   
   // Audio queue for managing playback on mobile
   const audioQueue = useAudioQueue();
+
+  // Load language and speaker ID from localStorage on mount (client-side only, after hydration)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('myLanguage');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setMyLanguage(parsed);
+          console.log('[useConversationController] Loaded language from localStorage:', parsed);
+        } catch (e) {
+          console.warn('[useConversationController] Failed to parse saved language:', e);
+        }
+      }
+      
+      // Load or create persistent speaker ID
+      let speakerId = localStorage.getItem('mySpeakerId');
+      if (!speakerId) {
+        speakerId = `speaker-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        localStorage.setItem('mySpeakerId', speakerId);
+        console.log('[useConversationController] Created new speaker ID:', speakerId);
+      } else {
+        console.log('[useConversationController] Loaded speaker ID from localStorage:', speakerId);
+      }
+      mySpeakerIdRef.current = speakerId;
+    }
+  }, []); // Only run once on mount
 
   // Keep audioEnabledRef in sync with audioEnabled state
   useEffect(() => {
@@ -73,17 +101,25 @@ export const useConversationController = (roomId: string): ConversationControlle
       if ((wasEnabled || isDesktop) && !audioEnabled) {
         console.log('[useConversationController] Auto-enabling audio (wasEnabled:', wasEnabled, 'isDesktop:', isDesktop, ')');
         setAudioEnabled(true);
-        // Try to unlock immediately
-        void audioQueue.unlock();
+        // DON'T call unlock() here - it needs a real user interaction!
+        // The user must click the "Audio aktivieren" button
       }
     }
   }, [audioQueue]); // Only run once on mount
 
   useEffect(() => {
     const loadHistory = async (): Promise<void> => {
-      const history = await fetchRoomHistory(roomId);
+      const history = await fetchRoomHistory(roomId, mySpeakerIdRef.current);
       setEntries(history);
       entriesRef.current = history; // Keep ref in sync
+      
+      // Populate myEntriesRef with my message IDs from history
+      history.forEach((entry) => {
+        if (entry.isMine) {
+          myEntriesRef.current.add(entry.id);
+        }
+      });
+      console.log('[useConversationController] Loaded history with', history.length, 'entries,', myEntriesRef.current.size, 'are mine');
     };
 
     void loadHistory();
@@ -101,12 +137,17 @@ export const useConversationController = (roomId: string): ConversationControlle
         // Check if entry already exists (synchronous check using ref)
         const exists = entriesRef.current.some((e) => e.id === entry.id);
         const isNewEntry = !exists;
+        // Check if this message is mine based on myEntriesRef (set during optimistic update)
+        // OR if we haven't tracked it yet, check against mySpeakerId from DB
         const isMine = myEntriesRef.current.has(entry.id);
         
         console.log('[useConversationController] Entry status:', {
           exists,
           isNewEntry,
           isMine,
+          entryId: entry.id,
+          myEntriesSize: myEntriesRef.current.size,
+          myEntriesList: Array.from(myEntriesRef.current),
           currentEntriesCount: entriesRef.current.length,
         });
         
@@ -122,6 +163,16 @@ export const useConversationController = (roomId: string): ConversationControlle
         } else {
           console.log('[useConversationController] Entry already exists, skipping');
         }
+        
+        // DEBUG: Log auto-play decision
+        console.log('[useConversationController] Auto-play check:', {
+          isNewEntry,
+          alreadyProcessed: processedTtsIdsRef.current.has(entry.id),
+          hasLanguage: !!myLanguage,
+          isMine,
+          audioEnabled: audioEnabledRef.current,
+          shouldPlay: isNewEntry && !processedTtsIdsRef.current.has(entry.id) && myLanguage && !isMine && audioEnabledRef.current
+        });
         
         // Play TTS only for NEW messages from others AND if audio is enabled
         if (isNewEntry && !processedTtsIdsRef.current.has(entry.id) && myLanguage && !isMine && audioEnabledRef.current) {
@@ -247,6 +298,10 @@ export const useConversationController = (roomId: string): ConversationControlle
 
   const updateMyLanguage = useCallback((language: LanguageOption) => {
     setMyLanguage(language);
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('myLanguage', JSON.stringify(language));
+    }
   }, []);
 
   const clearTranscript = useCallback(() => {
@@ -308,6 +363,7 @@ export const useConversationController = (roomId: string): ConversationControlle
         const newEntry = await insertConversationEntry(
           roomId,
           speaker,
+          mySpeakerIdRef.current!, // Pass my speaker ID
           capture.transcript,
           translation.translatedText,
           sourceLanguage.code,

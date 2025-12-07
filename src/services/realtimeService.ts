@@ -71,6 +71,7 @@ export const subscribeToRoom = (
 export const insertConversationEntry = async (
   roomId: string,
   speaker: SpeakerRole,
+  speakerId: string,
   originalText: string,
   translatedText: string,
   sourceLanguage: string,
@@ -79,6 +80,7 @@ export const insertConversationEntry = async (
   const payload: DbConversationInsert = {
     room_id: roomId,
     speaker_role: speaker,
+    speaker_id: speakerId,
     original_text: originalText,
     translated_text: translatedText,
     source_language: sourceLanguage,
@@ -103,6 +105,7 @@ export const insertConversationEntry = async (
 
 export const fetchRoomHistory = async (
   roomId: string,
+  mySpeakerId: string | null,
 ): Promise<ConversationEntry[]> => {
   /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
   const result = await supabase
@@ -116,6 +119,9 @@ export const fetchRoomHistory = async (
     return [];
   }
 
-  return (result.data as DbConversation[]).map(mapDbToEntry);
+  return (result.data as DbConversation[]).map((row) => ({
+    ...mapDbToEntry(row),
+    isMine: mySpeakerId ? row.speaker_id === mySpeakerId : false,
+  }));
   /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 };

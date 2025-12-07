@@ -8,6 +8,7 @@ export interface Database {
           id: string;
           room_id: string;
           speaker_role: 'self' | 'partner';
+          speaker_id: string;
           original_text: string;
           translated_text: string;
           source_language: string;
@@ -18,6 +19,7 @@ export interface Database {
           id?: string;
           room_id: string;
           speaker_role: 'self' | 'partner';
+          speaker_id: string;
           original_text: string;
           translated_text: string;
           source_language: string;
@@ -28,6 +30,7 @@ export interface Database {
           id?: string;
           room_id?: string;
           speaker_role?: 'self' | 'partner';
+          speaker_id?: string;
           original_text?: string;
           translated_text?: string;
           source_language?: string;

@@ -3,6 +3,7 @@ CREATE TABLE "trans-app_conversations" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   room_id TEXT NOT NULL,
   speaker_role TEXT NOT NULL CHECK (speaker_role IN ('self', 'partner')),
+  speaker_id TEXT NOT NULL, -- Persistent speaker ID to identify messages after reload
   original_text TEXT NOT NULL,
   translated_text TEXT NOT NULL,
   source_language TEXT NOT NULL,

@@ -4,13 +4,14 @@ import type { JSX } from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Users, User, Share2, Check } from 'lucide-react';
+import { ArrowLeft, Users, User, Share2, Check, Volume2 } from 'lucide-react';
 import { useConversationController } from '@/hooks/useConversationController';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants/languages';
 import { ConversationLog } from '@/components/conversation/ConversationLog';
 import { LanguageSelector } from '@/components/conversation/LanguageSelector';
 import { SpeakerConsole } from '@/components/conversation/SpeakerConsole';
 import { AutoPlayHint } from '@/components/conversation/AutoPlayHint';
+import { AudioPermissionModal } from '@/components/conversation/AudioPermissionModal';
 
 interface Props {
   roomId: string;
@@ -151,8 +152,8 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
 
       {/* Scrollable Chat Area */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {/* Audio Enable Banner */}
-        {!audioEnabled && (
+        {/* Audio Enable Banner - Show if audio not enabled OR if AudioContext not unlocked */}
+        {(!audioEnabled || !isAudioUnlocked) && (
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -168,7 +169,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
           >
             <div style={{ fontSize: '13px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '18px' }}>🔊</span>
-              <span>Audio aktivieren</span>
+              <span>{isAudioUnlocked ? 'Audio bereit' : 'Audio aktivieren'}</span>
             </div>
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -211,7 +212,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
       {/* Auto-Play Hint - appears when audio enabled but not unlocked */}
       <AutoPlayHint isUnlocked={isAudioUnlocked} audioEnabled={audioEnabled} />
 
-      {/* Fixed Footer with Recording Button */}
+      {/* Fixed Footer with Recording Button OR Audio Enable Button */}
       <footer style={{
         padding: '10px 12px',
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
@@ -221,13 +222,42 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
         boxShadow: '0 -1px 3px rgba(0,0,0,0.06)',
         zIndex: 20,
       }}>
-        <SpeakerConsole
-          role="self"
-          language={myLanguage}
-          status={status}
-          isActive={activeSpeaker === 'self'}
-          onSubmit={handleSubmitAudio}
-        />
+        {!isAudioUnlocked ? (
+          // Show big "Audio aktivieren" button until unlocked
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => void enableAudio()}
+            disabled={audioUnlocking}
+            style={{
+              width: '100%',
+              padding: '20px 24px',
+              backgroundColor: audioUnlocking ? '#9ca3af' : '#075E54',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '18px',
+              fontWeight: 600,
+              cursor: audioUnlocking ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              boxShadow: '0 4px 12px rgba(7, 94, 84, 0.3)',
+            }}
+          >
+            <Volume2 size={24} />
+            {audioUnlocking ? 'Aktiviere Audio...' : '🔊 Audio aktivieren für automatische Übersetzung'}
+          </motion.button>
+        ) : (
+          // Show normal recording console when unlocked
+          <SpeakerConsole
+            role="self"
+            language={myLanguage}
+            status={status}
+            isActive={activeSpeaker === 'self'}
+            onSubmit={handleSubmitAudio}
+          />
+        )}
       </footer>
     </div>
   );
