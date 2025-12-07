@@ -152,7 +152,7 @@ const playOpenAITTS = async (
 /**
  * Uses browser's built-in Speech Synthesis API
  */
-const useBrowserTTS = async (
+const playBrowserTTS = async (
   text: string,
   language: LanguageOption,
 ): Promise<void> => {
