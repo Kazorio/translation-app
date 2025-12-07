@@ -238,15 +238,12 @@ export const useAudioQueue = (): AudioQueueHook => {
     try {
       // Method 1: Resume AudioContext directly (critical for PWA!)
       if (typeof window !== 'undefined' && 'AudioContext' in window) {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-          // Check if Howler has a global audio context we can resume
-          const ctx = (Howler as any)?.ctx;
-          if (ctx && ctx.state === 'suspended') {
-            console.log('[useAudioQueue] Resuming suspended AudioContext...');
-            await ctx.resume();
-            console.log('[useAudioQueue] AudioContext resumed, state:', ctx.state);
-          }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const ctx = (Howler as { ctx?: AudioContext }).ctx;
+        if (ctx && ctx.state === 'suspended') {
+          console.log('[useAudioQueue] Resuming suspended AudioContext...');
+          await ctx.resume();
+          console.log('[useAudioQueue] AudioContext resumed, state:', ctx.state);
         }
       }
 
