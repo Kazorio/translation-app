@@ -129,6 +129,21 @@ export const useConversationController = (roomId: string): ConversationControlle
           console.log('[useConversationController] Playing TTS for entry:', entry.id);
           console.log('[useConversationController] Entry targetLanguage:', entry.targetLanguage, 'myLanguage:', myLanguage.code);
           
+          // TEST: Play notification sound first (to test auto-play with pre-existing file)
+          console.log('[useConversationController] 🔔 Playing test notification sound...');
+          fetch('/notification.mp3')
+            .then((res) => res.blob())
+            .then((blob) => {
+              audioQueue.enqueue({
+                id: `notification-${entry.id}`,
+                audioBlob: blob,
+                onStart: () => console.log('[TEST] 🔔 Notification sound started'),
+                onEnd: () => console.log('[TEST] 🔔 Notification sound finished'),
+                onError: (error) => console.error('[TEST] 🔔 Notification sound error:', error),
+              });
+            })
+            .catch((error) => console.error('[TEST] Failed to load notification sound:', error));
+          
           // Check if the translation is in MY language
           if (entry.targetLanguage === myLanguage.code) {
             // Perfect! Translation is already in my language
