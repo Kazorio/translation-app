@@ -21,7 +21,6 @@ const renderFormattedText = (text: string): ReactNode => {
   
   return lines.map((line, lineIndex) => {
     const elements: ReactNode[] = [];
-    let currentText = line;
     let key = 0;
 
     // Process bold (**text**) and italic (*text*)
