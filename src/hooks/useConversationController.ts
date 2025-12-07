@@ -16,6 +16,12 @@ import {
   fetchRoomHistory,
 } from '@/services/realtimeService';
 import { useAudioQueue } from '@/hooks/useAudioQueue';
+import { 
+  initializeAudio, 
+  playTestSound, 
+  playSendSound, 
+  playReceiveSound 
+} from '@/lib/audio/notificationSounds';
 
 interface ConversationController {
   entries: ConversationEntry[];
@@ -180,6 +186,10 @@ export const useConversationController = (roomId: string): ConversationControlle
         // Play TTS only for NEW messages from others AND if audio is enabled
         if (isNewEntry && !processedTtsIdsRef.current.has(entry.id) && myLanguage && !isMine && audioEnabledRef.current) {
           processedTtsIdsRef.current.add(entry.id);
+          
+          // RECEIVE NOTIFICATION SOUND: Play when receiving a new message from partner
+          playReceiveSound();
+          
           console.log('[useConversationController] Playing TTS for entry:', entry.id);
           console.log('[useConversationController] Entry targetLanguage:', entry.targetLanguage, 'myLanguage:', myLanguage.code);
           
@@ -387,6 +397,9 @@ export const useConversationController = (roomId: string): ConversationControlle
             entriesRef.current = updated; // Keep ref in sync
             return updated;
           });
+          
+          // SEND NOTIFICATION SOUND: Play when audio message successfully sent
+          playSendSound();
         }
 
         // Don't play TTS for own messages - only the other person hears it via Realtime
@@ -467,6 +480,9 @@ export const useConversationController = (roomId: string): ConversationControlle
             entriesRef.current = updated; // Keep ref in sync
             return updated;
           });
+          
+          // SEND NOTIFICATION SOUND: Play when message successfully sent
+          playSendSound();
         }
 
         setStatus('idle');
@@ -494,6 +510,14 @@ export const useConversationController = (roomId: string): ConversationControlle
         console.log('[useConversationController] Audio unlocked successfully');
       } else {
         console.warn('[useConversationController] Audio unlock reported failure, but continuing');
+      }
+      
+      // Initialize notification sounds (must be in user gesture context)
+      const notificationInitialized = initializeAudio();
+      if (notificationInitialized) {
+        // Play test sound immediately to verify audio works
+        playTestSound();
+        console.log('[useConversationController] Notification sounds initialized and test sound played');
       }
       
       // Ensure state is set to enabled
