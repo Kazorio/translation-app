@@ -295,8 +295,8 @@ export const ConversationLog = ({ entries, myLanguage, retranslatingIds, blocked
                   }}
                 >
                   <p style={{ 
-                    fontSize: '14.5px', 
-                    lineHeight: '1.4', 
+                    fontSize: '16px', // Increased from 14.5px for better emoji display
+                    lineHeight: '1.5', 
                     margin: 0,
                     wordWrap: 'break-word',
                     whiteSpace: 'pre-wrap', // Preserve line breaks and spaces
