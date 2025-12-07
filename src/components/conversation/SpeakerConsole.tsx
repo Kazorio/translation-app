@@ -19,7 +19,6 @@ interface Props {
 }
 
 export const SpeakerConsole = ({
-  role,
   language,
   status,
   isActive,

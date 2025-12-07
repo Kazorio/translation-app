@@ -43,10 +43,10 @@ export const ConversationLog = ({ entries, myLanguage, retranslatingIds }: Props
       
       if (isMine) {
         // My message - use source language
-        langCode = entry.sourceLanguage || 'de';
+        langCode = entry.sourceLanguage ?? 'de';
       } else {
         // Their message - use my current language
-        langCode = myLanguage?.code || 'de';
+        langCode = myLanguage?.code ?? 'de';
       }
 
       // Use OpenAI TTS API

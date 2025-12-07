@@ -29,7 +29,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       'en': 'alloy',   // English
     };
 
-    const voice = (language && voiceMap[language]) || 'alloy';
+    const voice = (language && voiceMap[language]) ?? 'alloy';
 
     const response = await openai.audio.speech.create({
       model: 'tts-1',
