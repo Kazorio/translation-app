@@ -101,7 +101,7 @@ export const useAudioQueue = (): AudioQueueHook => {
             void playNext();
           }, 100);
         },
-        onloaderror: (id, error) => {
+        onloaderror: (_id, error) => {
           console.error('[useAudioQueue] Load error:', item.id, error);
           URL.revokeObjectURL(audioUrl);
           currentHowlRef.current = null;
@@ -118,7 +118,7 @@ export const useAudioQueue = (): AudioQueueHook => {
             void playNext();
           }, 100);
         },
-        onplayerror: (id, error) => {
+        onplayerror: (_id, error) => {
           console.error('[useAudioQueue] Play error (BLOCKED?):', item.id, error);
           
           // Audio was blocked - store for manual playback
@@ -245,11 +245,11 @@ export const useAudioQueue = (): AudioQueueHook => {
           console.log('[useAudioQueue] Silent audio played for unlock');
           setIsUnlocked(true);
         },
-        onloaderror: (id, error) => {
+        onloaderror: (_id, error) => {
           console.warn('[useAudioQueue] Unlock audio load error:', error);
           setIsUnlocked(true); // Still mark as unlocked to allow attempts
         },
-        onplayerror: (id, error) => {
+        onplayerror: (_id, error) => {
           console.warn('[useAudioQueue] Unlock audio play error:', error);
           setIsUnlocked(true); // Still mark as unlocked to allow attempts
         },
