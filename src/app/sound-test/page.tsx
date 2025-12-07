@@ -71,7 +71,7 @@ export default function SoundTestPage() {
       testAudio.currentTime = 0;
       testAudio.play()
         .then(() => setStatus('✅ Test-Sound abgespielt!'))
-        .catch((error) => setStatus(`❌ Fehler: ${error.message}`));
+        .catch((error) => setStatus(`❌ Fehler: ${error instanceof Error ? error.message : 'Unbekannt'}`));
       
     } catch (error) {
       setStatus(`❌ Fehler: ${error instanceof Error ? error.message : 'Unbekannt'}`);
@@ -83,7 +83,7 @@ export default function SoundTestPage() {
     testAudio.currentTime = 0;
     testAudio.play()
       .then(() => setStatus('🔊 Test-Sound gespielt'))
-      .catch((error) => setStatus(`❌ ${error.message}`));
+      .catch((error) => setStatus(`❌ ${error instanceof Error ? error.message : 'Unbekannt'}`));
   };
 
   const playSend = () => {
@@ -91,7 +91,7 @@ export default function SoundTestPage() {
     sendAudio.currentTime = 0;
     sendAudio.play()
       .then(() => setStatus('📤 Send-Sound gespielt'))
-      .catch((error) => setStatus(`❌ ${error.message}`));
+      .catch((error) => setStatus(`❌ ${error instanceof Error ? error.message : 'Unbekannt'}`));
   };
 
   const playReceive = () => {
@@ -99,7 +99,7 @@ export default function SoundTestPage() {
     receiveAudio.currentTime = 0;
     receiveAudio.play()
       .then(() => setStatus('📥 Receive-Sound gespielt'))
-      .catch((error) => setStatus(`❌ ${error.message}`));
+      .catch((error) => setStatus(`❌ ${error instanceof Error ? error.message : 'Unbekannt'}`));
   };
 
   return (
