@@ -89,23 +89,23 @@ export const speak = async (
   // Use browser TTS on mobile for reliability
   if (isMobile) {
     console.log('[Audio] Using browser TTS for mobile');
-    return useBrowserTTS(text, language);
+    return playBrowserTTS(text, language);
   }
 
   // Try OpenAI TTS on desktop, fallback to browser TTS
   try {
     console.log('[Audio] Trying OpenAI TTS for desktop');
-    await useOpenAITTS(text);
+    await playOpenAITTS(text);
   } catch (error) {
     console.warn('[Audio] OpenAI TTS failed, falling back to browser TTS:', error);
-    return useBrowserTTS(text, language);
+    return playBrowserTTS(text, language);
   }
 };
 
 /**
  * Uses OpenAI Text-to-Speech API via Next.js API route
  */
-const useOpenAITTS = async (
+const playOpenAITTS = async (
   text: string,
 ): Promise<void> => {
   // Ensure AudioContext is ready
