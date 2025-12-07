@@ -60,14 +60,13 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     }}>
       {/* Fixed Header */}
       <header style={{
-        padding: '12px 16px',
+        padding: '8px 12px',
         borderBottom: 'none',
         backgroundColor: '#075E54',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '12px',
-        flexWrap: 'wrap',
+        gap: '8px',
         flexShrink: 0,
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         zIndex: 10,
@@ -96,22 +95,23 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           style={{ 
-            padding: '8px 14px',
+            padding: '6px 10px',
             backgroundColor: userCount > 1 ? '#25D366' : '#EA580C',
             borderRadius: '20px',
-            fontSize: '13px',
+            fontSize: '12px',
             fontWeight: 600,
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '4px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
           }}
         >
-          {userCount > 1 ? <Users size={16} /> : <User size={16} />}
+          {userCount > 1 ? <Users size={14} /> : <User size={14} />}
           {userCount}
         </motion.div>
-        <div style={{ flex: 1, minWidth: '200px' }}>
+        
+        <div style={{ flex: 1, minWidth: '120px', maxWidth: '200px' }}>
           <LanguageSelector
             languages={SUPPORTED_LANGUAGES}
             selected={myLanguage}
@@ -120,16 +120,15 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
               if (!audioEnabled) void enableAudio();
             }}
           />
-        </div>
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={handleCopyLink}
           style={{
-            padding: '10px 18px',
+            padding: '8px',
             backgroundColor: copied ? '#25D366' : '#128C7E',
             color: 'white',
             border: 'none',
-            borderRadius: '20px',
+            borderRadius: '50%',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: 600,
@@ -137,21 +136,14 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
             whiteSpace: 'nowrap',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            justifyContent: 'center',
             boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+            width: '36px',
+            height: '36px',
           }}
         >
-          {copied ? (
-            <>
-              <Check size={18} />
-              <span>Kopiert!</span>
-            </>
-          ) : (
-            <>
-              <Share2 size={18} />
-              <span>Teilen</span>
-            </>
-          )}
+          {copied ? <Check size={18} /> : <Share2 size={18} />}
+        </motion.button>
         </motion.button>
       </header>
 
@@ -163,9 +155,8 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
         {!audioEnabled && (
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              padding: '14px 16px',
+      {/* Scrollable Chat Area */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               backgroundColor: '#fef3c7',
               borderBottom: '1px solid #fbbf24',
               display: 'flex',
