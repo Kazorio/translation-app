@@ -19,7 +19,6 @@ interface Props {
 export const ConversationShell = ({ roomId }: Props): JSX.Element => {
   const {
     entries,
-    activeSpeaker,
     errorMessage,
     myLanguage,
     userCount,
