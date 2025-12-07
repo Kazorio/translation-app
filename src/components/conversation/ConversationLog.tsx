@@ -37,45 +37,57 @@ export const ConversationLog = ({ entries, myLanguage, retranslatingIds }: Props
     setLoadingId(entry.id);
 
     try {
-      // Determine language for speech
+      // Determine language for TTS
       const isMine = entry.isMine ?? false;
-      let speechLang = 'de-DE'; // default
+      let langCode = 'de'; // default
       
       if (isMine) {
         // My message - use source language
-        speechLang = entry.sourceLanguage === 'en' ? 'en-US' : 
-                     entry.sourceLanguage === 'es' ? 'es-ES' :
-                     entry.sourceLanguage === 'fr' ? 'fr-FR' :
-                     entry.sourceLanguage === 'it' ? 'it-IT' : 'de-DE';
+        langCode = entry.sourceLanguage || 'de';
       } else {
         // Their message - use my current language
-        speechLang = myLanguage?.code === 'en' ? 'en-US' : 
-                     myLanguage?.code === 'es' ? 'es-ES' :
-                     myLanguage?.code === 'fr' ? 'fr-FR' :
-                     myLanguage?.code === 'it' ? 'it-IT' : 'de-DE';
+        langCode = myLanguage?.code || 'de';
       }
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = speechLang;
-      utterance.rate = 0.9;
+      // Use OpenAI TTS API
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text, language: langCode }),
+      });
+
+      if (!response.ok) {
+        throw new Error('TTS request failed');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
       
-      utterance.onstart = () => {
+      audio.onloadeddata = () => {
         setLoadingId(null);
+      };
+      
+      audio.onplay = () => {
         setPlayingId(entry.id);
       };
       
-      utterance.onend = () => {
+      audio.onended = () => {
         setPlayingId(null);
+        URL.revokeObjectURL(audioUrl);
       };
       
-      utterance.onerror = () => {
+      audio.onerror = () => {
         setPlayingId(null);
         setLoadingId(null);
+        URL.revokeObjectURL(audioUrl);
       };
 
-      window.speechSynthesis.speak(utterance);
+      await audio.play();
     } catch (error) {
-      console.error('Speech synthesis error:', error);
+      console.error('TTS error:', error);
       setPlayingId(null);
       setLoadingId(null);
     }

@@ -63,11 +63,6 @@ export const SpeakerConsole = ({
 
   return (
     <div className="speaker-console">
-      <header>
-        <span className="eyebrow">{role === 'self' ? 'Du' : 'Begleitung'}</span>
-        <strong>{language?.label || 'Keine Sprache gewählt'}</strong>
-      </header>
-
       {error && (
         <div className="error-message" style={{ color: 'red', marginBottom: '8px' }}>
           {error}
