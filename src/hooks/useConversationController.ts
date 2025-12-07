@@ -33,6 +33,7 @@ interface ConversationController {
   enableAudio: () => Promise<void>;
   blockedAudioIds: Set<string>; // IDs of messages with blocked audio
   playBlockedAudio: (id: string) => void; // Manually play blocked audio
+  isAudioUnlocked: boolean; // Whether audio context is unlocked for auto-play
 }
 
 export const useConversationController = (roomId: string): ConversationController => {
@@ -330,27 +331,32 @@ export const useConversationController = (roomId: string): ConversationControlle
 
   const enableAudio = useCallback(async (): Promise<void> => {
     setAudioUnlocking(true);
-    console.log('[useConversationController] Starting audio unlock...');
+    console.log('[useConversationController] Starting audio unlock... (already enabled:', audioEnabled, ')');
     
     try {
-      // Use the audio queue unlock mechanism for proper mobile support
+      // ALWAYS unlock on user interaction - critical for PWA auto-play
       const success = await audioQueue.unlock();
       
       if (success) {
-        console.log('[useConversationController] Audio unlocked successfully via queue');
+        console.log('[useConversationController] Audio unlocked successfully');
       } else {
         console.warn('[useConversationController] Audio unlock reported failure, but continuing');
       }
       
-      setAudioEnabled(true);
+      // Ensure state is set to enabled
+      if (!audioEnabled) {
+        setAudioEnabled(true);
+      }
       setAudioUnlocking(false);
     } catch (error) {
       console.error('[useConversationController] Audio unlock failed:', error);
       // Still enable audio to allow attempts
-      setAudioEnabled(true);
+      if (!audioEnabled) {
+        setAudioEnabled(true);
+      }
       setAudioUnlocking(false);
     }
-  }, [audioQueue]);
+  }, [audioQueue, audioEnabled]);
 
   return {
     entries,
@@ -368,5 +374,6 @@ export const useConversationController = (roomId: string): ConversationControlle
     enableAudio,
     blockedAudioIds: audioQueue.blockedAudioIds,
     playBlockedAudio: audioQueue.playBlockedAudio,
+    isAudioUnlocked: audioQueue.isUnlocked,
   };
 };

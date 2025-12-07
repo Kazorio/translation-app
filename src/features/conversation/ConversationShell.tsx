@@ -10,6 +10,7 @@ import { SUPPORTED_LANGUAGES } from '@/lib/constants/languages';
 import { ConversationLog } from '@/components/conversation/ConversationLog';
 import { LanguageSelector } from '@/components/conversation/LanguageSelector';
 import { SpeakerConsole } from '@/components/conversation/SpeakerConsole';
+import { AutoPlayHint } from '@/components/conversation/AutoPlayHint';
 
 interface Props {
   roomId: string;
@@ -31,6 +32,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     enableAudio,
     blockedAudioIds,
     playBlockedAudio,
+    isAudioUnlocked,
   } = useConversationController(roomId);
 
   const [copied, setCopied] = useState(false);
@@ -41,17 +43,13 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     
-    // Unlock audio on this user interaction
-    if (!audioEnabled) {
-      await enableAudio();
-    }
+    // ALWAYS unlock audio on ANY user interaction (even if already enabled)
+    await enableAudio();
   };
 
   const handleSubmitAudio = async (audioBlob: Blob): Promise<void> => {
-    // Unlock audio on first recording (mobile support)
-    if (!audioEnabled) {
-      await enableAudio();
-    }
+    // ALWAYS unlock audio on recording (critical for PWA)
+    await enableAudio();
     await triggerUtterance('self', audioBlob);
   };
 
@@ -209,6 +207,9 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
           onPlayBlockedAudio={playBlockedAudio}
         />
       </div>
+
+      {/* Auto-Play Hint - appears when audio enabled but not unlocked */}
+      <AutoPlayHint isUnlocked={isAudioUnlocked} audioEnabled={audioEnabled} />
 
       {/* Fixed Footer with Recording Button */}
       <footer style={{
