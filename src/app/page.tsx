@@ -95,6 +95,25 @@ export default function Home(): JSX.Element {
         <p className="hint">
           Öffne diesen Link auf einem zweiten Gerät, um die Live-Übersetzung zu testen.
         </p>
+
+        <Link 
+          href="/sound-test"
+          style={{
+            marginTop: '24px',
+            padding: '12px 24px',
+            backgroundColor: '#6366f1',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            textDecoration: 'none',
+            display: 'inline-block',
+          }}
+        >
+          🔔 Mobile Sound Test
+        </Link>
       </section>
     </main>
     </>
