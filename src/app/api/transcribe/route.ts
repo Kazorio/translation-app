@@ -12,6 +12,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File;
+    const language = formData.get('language') as string | null; // Expected language code
 
     if (!audioFile) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       name: audioFile.name,
       type: audioFile.type,
       size: audioFile.size,
+      language,
     });
 
     // Send WAV file directly to Whisper
@@ -29,6 +31,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const response = await openai.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
+      language: language || undefined, // Set expected language (ISO-639-1 code like 'fa', 'de', 'en')
       prompt: 'This is a short spoken message in a conversation. It may contain numbers, greetings, or brief statements.',
       temperature: 0, // Lower temperature = less creative/hallucination
     });
