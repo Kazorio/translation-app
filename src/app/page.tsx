@@ -3,8 +3,13 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
+import { usePWA } from '@/hooks/usePWA';
 
 export default function Home(): JSX.Element {
+  // Register PWA service worker
+  usePWA();
+  
   // Fixed room ID for easy access during development
   const fixedRoomId = 'demo-room-v3';
   const [testResult, setTestResult] = useState<string>('');
@@ -40,7 +45,9 @@ export default function Home(): JSX.Element {
   };
 
   return (
-    <main className="landing-page">
+    <>
+      <PWAInstallPrompt />
+      <main className="landing-page">
       <section className="hero">
         <p className="eyebrow">Live Dolmetscher</p>
         <h1>Sprich frei - wir übersetzen in beide Richtungen.</h1>
@@ -90,5 +97,6 @@ export default function Home(): JSX.Element {
         </p>
       </section>
     </main>
+    </>
   );
 }

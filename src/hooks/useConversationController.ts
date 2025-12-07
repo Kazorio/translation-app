@@ -58,6 +58,19 @@ export const useConversationController = (roomId: string): ConversationControlle
     audioEnabledRef.current = audioEnabled;
   }, [audioEnabled]);
 
+  // Auto-enable audio on desktop (viewport > 768px)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isDesktop = window.innerWidth > 768;
+      if (isDesktop && !audioEnabled) {
+        console.log('[useConversationController] Desktop detected, auto-enabling audio');
+        setAudioEnabled(true);
+        // Try to unlock immediately
+        void audioQueue.unlock();
+      }
+    }
+  }, [audioQueue, audioEnabled]);
+
   useEffect(() => {
     const loadHistory = async (): Promise<void> => {
       const history = await fetchRoomHistory(roomId);

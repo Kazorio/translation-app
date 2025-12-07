@@ -17,12 +17,20 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: {
-  readonly children: ReactNode;
-}): JSX.Element {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="de" className={plex.className}>
-      <body>{children}</body>
+    <html lang="de">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#075E54" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Translator" />
+        <link rel="apple-touch-icon" href="/icon-192.svg" />
+      </head>
+      <body className={plex.className}>{children}</body>
     </html>
   );
 }

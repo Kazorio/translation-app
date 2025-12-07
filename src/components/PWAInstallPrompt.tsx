@@ -1,0 +1,189 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Download, X } from 'lucide-react';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+export const PWAInstallPrompt = () => {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+      return;
+    }
+
+    // Listen for install prompt
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      
+      // Show prompt after 3 seconds
+      setTimeout(() => {
+        setShowPrompt(true);
+      }, 3000);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    // Check if dismissed before
+    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    if (dismissed) {
+      const dismissedDate = new Date(dismissed);
+      const now = new Date();
+      const daysSince = (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+      
+      // Don't show again for 7 days
+      if (daysSince < 7) {
+        setShowPrompt(false);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    console.log(`User response to install prompt: ${outcome}`);
+    
+    if (outcome === 'accepted') {
+      setIsInstalled(true);
+    }
+    
+    setDeferredPrompt(null);
+    setShowPrompt(false);
+  };
+
+  const handleDismiss = () => {
+    setShowPrompt(false);
+    localStorage.setItem('pwa-install-dismissed', new Date().toISOString());
+  };
+
+  // Don't show if already installed
+  if (isInstalled) return null;
+
+  return (
+    <AnimatePresence>
+      {showPrompt && (
+        <motion.div
+          initial={{ opacity: 0, y: -100 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -100 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            maxWidth: '90%',
+            width: '400px',
+          }}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #075E54 0%, #128C7E 100%)',
+              borderRadius: '16px',
+              padding: '20px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+              color: 'white',
+              position: 'relative',
+            }}
+          >
+            <button
+              onClick={handleDismiss}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'white',
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '12px',
+                  background: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '32px',
+                  flexShrink: 0,
+                }}
+              >
+                🌐
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                  Als App installieren
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', opacity: 0.9 }}>
+                  Für besseres Audio & schnelleren Zugriff
+                </p>
+              </div>
+            </div>
+
+            <ul style={{ margin: '0 0 16px 0', padding: '0 0 0 20px', fontSize: '13px', opacity: 0.95 }}>
+              <li>📱 Icon auf dem Home Screen</li>
+              <li>🔊 Bessere Audio-Wiedergabe</li>
+              <li>⚡ Schnellerer Start</li>
+              <li>📶 Offline-Unterstützung</li>
+            </ul>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleInstall}
+              style={{
+                width: '100%',
+                background: 'white',
+                color: '#075E54',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '14px',
+                fontSize: '15px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              <Download size={20} />
+              App installieren
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
