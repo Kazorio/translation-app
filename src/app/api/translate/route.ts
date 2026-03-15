@@ -9,6 +9,10 @@ function getOpenAIClient() {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const openai = getOpenAIClient();
+  const translateModel = process.env.OPENAI_TRANSLATE_MODEL ?? 'gpt-4.1-mini';
+  const rawTemperature = Number(process.env.OPENAI_TRANSLATE_TEMPERATURE ?? '0');
+  const translateTemperature = Number.isNaN(rawTemperature) ? 0 : rawTemperature;
+
   try {
     const { text, sourceLanguage, targetLanguage } = (await request.json()) as {
       text: string;
@@ -17,7 +21,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     };
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: translateModel,
       messages: [
         {
           role: 'system',
@@ -28,7 +32,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           content: text,
         },
       ],
-      temperature: 0.3,
+      temperature: translateTemperature,
       max_tokens: 500,
     });
 

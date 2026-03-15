@@ -9,6 +9,8 @@ function getOpenAIClient() {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const openai = getOpenAIClient();
+  const transcribeModel = process.env.OPENAI_TRANSCRIBE_MODEL ?? 'whisper-1';
+
   try {
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File;
@@ -30,7 +32,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Use prompt to reduce hallucinations (especially for short utterances)
     const response = await openai.audio.transcriptions.create({
       file: audioFile,
-      model: 'whisper-1',
+      model: transcribeModel,
       language: language || undefined, // Set expected language (ISO-639-1 code like 'fa', 'de', 'en')
       prompt: 'This is a short spoken message in a conversation. It may contain numbers, greetings, or brief statements.',
       temperature: 0, // Lower temperature = less creative/hallucination
