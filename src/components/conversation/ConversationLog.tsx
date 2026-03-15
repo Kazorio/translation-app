@@ -277,9 +277,10 @@ export const ConversationLog = ({
           <span key={`${entryId}-case-${annotation.start}-${index}`}>
             <span
               style={{
-                backgroundColor: 'rgba(250, 204, 21, 0.35)',
+                backgroundColor: 'rgba(250, 204, 21, 0.62)',
                 borderRadius: '3px',
-                padding: '0 1px',
+                padding: '0 2px',
+                boxShadow: 'inset 0 -1px 0 rgba(161, 98, 7, 0.35)',
               }}
             >
               {word.charAt(0)}
