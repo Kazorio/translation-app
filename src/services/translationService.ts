@@ -7,6 +7,10 @@ import type { TranslationPayload } from '@/types/conversation';
 export const translateText = async (
   payload: TranslationPayload,
 ): Promise<{ translatedText: string }> => {
+  if (payload.sourceLanguage.code === payload.targetLanguage.code) {
+    return { translatedText: payload.text };
+  }
+
   const sourceLang = payload.sourceLanguage.label;
   const targetLang = payload.targetLanguage.label;
 

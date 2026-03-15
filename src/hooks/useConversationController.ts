@@ -9,7 +9,6 @@ import type {
 } from '@/types/conversation';
 import { captureUtterance } from '@/services/speechCaptureService';
 import { translateText } from '@/services/translationService';
-import { fetchVoiceAudio } from '@/services/voiceService';
 import {
   subscribeToRoom,
   insertConversationEntry,
@@ -43,9 +42,20 @@ interface ConversationController {
   isAudioUnlocked: boolean; // Whether audio context is unlocked for auto-play
 }
 
-export const useConversationController = (roomId: string): ConversationController => {
+interface ConversationControllerOptions {
+  forcedLanguage?: LanguageOption;
+}
+
+export const useConversationController = (
+  roomId: string,
+  options?: ConversationControllerOptions,
+): ConversationController => {
   // Initialize language from localStorage immediately (before first render)
   const [myLanguage, setMyLanguage] = useState<LanguageOption | null>(() => {
+    if (options?.forcedLanguage) {
+      return options.forcedLanguage;
+    }
+
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('myLanguage');
       if (saved) {
@@ -72,6 +82,7 @@ export const useConversationController = (roomId: string): ConversationControlle
   const [retranslatingIds, setRetranslatingIds] = useState<Set<string>>(new Set());
   const lastUserCountRef = useRef<number>(0); // Debounce user count updates
   const mySpeakerIdRef = useRef<string | null>(null); // Persistent speaker ID
+  const forcedLanguage = options?.forcedLanguage;
   
   // Audio queue for managing playback on mobile
   const audioQueue = useAudioQueue();
@@ -115,6 +126,12 @@ export const useConversationController = (roomId: string): ConversationControlle
       }
     }
   }, [audioQueue]); // Only run once on mount
+
+  useEffect(() => {
+    if (forcedLanguage) {
+      setMyLanguage(forcedLanguage);
+    }
+  }, [forcedLanguage]);
 
   useEffect(() => {
     const loadHistory = async (): Promise<void> => {
@@ -173,123 +190,61 @@ export const useConversationController = (roomId: string): ConversationControlle
           console.log('[useConversationController] Entry already exists, skipping');
         }
         
-        // DEBUG: Log auto-play decision
-        console.log('[useConversationController] Auto-play check:', {
+        // DEBUG: Log incoming handling (auto-read disabled)
+        console.log('[useConversationController] Incoming message check:', {
           isNewEntry,
           alreadyProcessed: processedTtsIdsRef.current.has(entry.id),
           hasLanguage: !!myLanguage,
           isMine,
-          audioEnabled: audioEnabledRef.current,
-          shouldPlay: isNewEntry && !processedTtsIdsRef.current.has(entry.id) && myLanguage && !isMine && audioEnabledRef.current
+          shouldHandle: isNewEntry && !processedTtsIdsRef.current.has(entry.id) && !!myLanguage && !isMine,
         });
-        
-        // Play TTS only for NEW messages from others AND if audio is enabled
-        if (isNewEntry && !processedTtsIdsRef.current.has(entry.id) && myLanguage && !isMine && audioEnabledRef.current) {
+
+        // Auto read-aloud disabled: process incoming message state only
+        if (isNewEntry && !processedTtsIdsRef.current.has(entry.id) && myLanguage && !isMine) {
           processedTtsIdsRef.current.add(entry.id);
-          
-          // RECEIVE NOTIFICATION SOUND: Play when receiving a new message from partner
-          playReceiveSound();
-          
-          console.log('[useConversationController] Playing TTS for entry:', entry.id);
-          console.log('[useConversationController] Entry targetLanguage:', entry.targetLanguage, 'myLanguage:', myLanguage.code);
-          
-          // TEST: Play notification sound first (to test auto-play with pre-existing file)
-          console.log('[useConversationController] 🔔 Playing test notification sound...');
-          fetch('/notification.mp3')
-            .then((res) => res.blob())
-            .then((blob) => {
-              audioQueue.enqueue({
-                id: `notification-${entry.id}`,
-                audioBlob: blob,
-                onStart: () => console.log('[TEST] 🔔 Notification sound started'),
-                onEnd: () => console.log('[TEST] 🔔 Notification sound finished'),
-                onError: (error) => console.error('[TEST] 🔔 Notification sound error:', error),
-              });
-            })
-            .catch((error) => console.error('[TEST] Failed to load notification sound:', error));
-          
-          // Check if the translation is in MY language
-          if (entry.targetLanguage === myLanguage.code) {
-            // Perfect! Translation is already in my language
-            console.log('[useConversationController] Translation matches my language, enqueueing TTS');
-            void fetchVoiceAudio(entry.translatedText, myLanguage).then((audioBlob) => {
-              audioQueue.enqueue({
-                id: entry.id,
-                audioBlob,
-                onStart: () => console.log('[TTS] Playing:', entry.id),
-                onEnd: () => console.log('[TTS] Finished:', entry.id),
-                onError: (error) => console.error('[TTS] Error:', entry.id, error),
-              });
-            }).catch((error) => {
-              console.error('[useConversationController] Failed to fetch TTS audio:', error);
-            });
-          } else if (entry.sourceLanguage === myLanguage.code) {
-            // The original text is in my language, play that instead
-            console.log('[useConversationController] Original text is in my language, enqueueing that');
-            void fetchVoiceAudio(entry.originalText, myLanguage).then((audioBlob) => {
-              audioQueue.enqueue({
-                id: entry.id,
-                audioBlob,
-                onStart: () => console.log('[TTS] Playing:', entry.id),
-                onEnd: () => console.log('[TTS] Finished:', entry.id),
-                onError: (error) => console.error('[TTS] Error:', entry.id, error),
-              });
-            }).catch((error) => {
-              console.error('[useConversationController] Failed to fetch TTS audio:', error);
-            });
-          } else {
-            // Need to translate to my language on-the-fly and UPDATE the entry
-            console.log('[useConversationController] Translation mismatch, re-translating to my language');
+
+          // Keep lightweight receive notification sound (no TTS auto-play)
+          if (audioEnabledRef.current) {
+            playReceiveSound();
+          }
+
+          // Keep re-translation for display consistency when needed (without auto playback)
+          if (entry.targetLanguage !== myLanguage.code && entry.sourceLanguage !== myLanguage.code) {
+            console.log('[useConversationController] Translation mismatch, re-translating for display only');
             const sourceText = entry.originalText;
             const sourceCode = entry.sourceLanguage || 'en';
-            
+
             setRetranslatingIds((prev) => new Set(prev).add(entry.id));
-            
+
             void translateText({
               text: sourceText,
               sourceLanguage: { code: sourceCode, label: sourceCode, locale: sourceCode },
               targetLanguage: myLanguage,
-            }).then((result) => {
-              // Update the entry with the new translation
-              setEntries((prev) => {
-                const updated = prev.map((e) => 
-                  e.id === entry.id 
-                    ? { ...e, translatedText: result.translatedText, targetLanguage: myLanguage.code }
-                    : e
-                );
-                entriesRef.current = updated;
-                return updated;
-              });
-              
-              setRetranslatingIds((prev) => {
-                const newSet = new Set(prev);
-                newSet.delete(entry.id);
-                return newSet;
-              });
-              
-              // Enqueue TTS for retranslated text
-              void fetchVoiceAudio(result.translatedText, myLanguage).then((audioBlob) => {
-                audioQueue.enqueue({
-                  id: entry.id,
-                  audioBlob,
-                  onStart: () => console.log('[TTS] Playing retranslated:', entry.id),
-                  onEnd: () => console.log('[TTS] Finished retranslated:', entry.id),
-                  onError: (error) => console.error('[TTS] Error retranslated:', entry.id, error),
+            })
+              .then((result) => {
+                setEntries((prev) => {
+                  const updated = prev.map((e) =>
+                    e.id === entry.id
+                      ? { ...e, translatedText: result.translatedText, targetLanguage: myLanguage.code }
+                      : e,
+                  );
+                  entriesRef.current = updated;
+                  return updated;
                 });
-              }).catch((error) => {
-                console.error('[useConversationController] Failed to fetch TTS audio for retranslation:', error);
+              })
+              .catch((error) => {
+                console.warn('[useConversationController] Re-translation failed:', error);
+              })
+              .finally(() => {
+                setRetranslatingIds((prev) => {
+                  const newSet = new Set(prev);
+                  newSet.delete(entry.id);
+                  return newSet;
+                });
               });
-            }).catch((error) => {
-              console.warn('[useConversationController] Re-translation failed:', error);
-              setRetranslatingIds((prev) => {
-                const newSet = new Set(prev);
-                newSet.delete(entry.id);
-                return newSet;
-              });
-            });
           }
         } else {
-          console.log('[useConversationController] Skipping TTS - already processed or duplicate');
+          console.log('[useConversationController] Skipping incoming processing - duplicate/already processed/own message');
         }
       },
       (count) => {
@@ -310,12 +265,17 @@ export const useConversationController = (roomId: string): ConversationControlle
   }, [roomId]); // Only re-subscribe when roomId changes, not on language change!
 
   const updateMyLanguage = useCallback((language: LanguageOption) => {
+    if (forcedLanguage) {
+      setMyLanguage(forcedLanguage);
+      return;
+    }
+
     setMyLanguage(language);
     // Persist to localStorage
     if (typeof window !== 'undefined') {
       localStorage.setItem('myLanguage', JSON.stringify(language));
     }
-  }, []);
+  }, [forcedLanguage]);
 
   const clearTranscript = useCallback(() => {
     setEntries([]);
@@ -344,20 +304,21 @@ export const useConversationController = (roomId: string): ConversationControlle
       // In a real scenario, we'd detect the other user's language from their entries
       const sourceLanguage = myLanguage;
       
-      // Try to detect target language from recent entries
-      let targetLanguage: LanguageOption = myLanguage; // fallback
-      const recentEntries = entriesRef.current.slice(-5);
-      for (const entry of recentEntries) {
-        if (entry.sourceLanguage && entry.sourceLanguage !== myLanguage.code) {
-          // Found a message from partner in different language
-          targetLanguage = {
-            code: entry.sourceLanguage,
-            label: entry.sourceLanguage,
-            locale: entry.sourceLanguage,
-          };
-          break;
+      const targetLanguage: LanguageOption = forcedLanguage ?? (() => {
+        let detectedLanguage: LanguageOption = myLanguage;
+        const recentEntries = entriesRef.current.slice(-5);
+        for (const entry of recentEntries) {
+          if (entry.sourceLanguage && entry.sourceLanguage !== myLanguage.code) {
+            detectedLanguage = {
+              code: entry.sourceLanguage,
+              label: entry.sourceLanguage,
+              locale: entry.sourceLanguage,
+            };
+            break;
+          }
         }
-      }
+        return detectedLanguage;
+      })();
 
       try {
         const capture = await captureUtterance({
@@ -413,7 +374,7 @@ export const useConversationController = (roomId: string): ConversationControlle
         setTimeout(() => setStatus('idle'), 1200);
       }
     },
-    [myLanguage, roomId],
+    [forcedLanguage, myLanguage, roomId],
   );
 
   const sendTextMessage = useCallback(
@@ -435,20 +396,21 @@ export const useConversationController = (roomId: string): ConversationControlle
 
       const sourceLanguage = myLanguage;
       
-      // Try to detect target language from recent entries
-      let targetLanguage: LanguageOption = myLanguage; // fallback
-      const recentEntries = entriesRef.current.slice(-5);
-      for (const entry of recentEntries) {
-        if (entry.sourceLanguage && entry.sourceLanguage !== myLanguage.code) {
-          // Found a message from partner in different language
-          targetLanguage = {
-            code: entry.sourceLanguage,
-            label: entry.sourceLanguage,
-            locale: entry.sourceLanguage,
-          };
-          break;
+      const targetLanguage: LanguageOption = forcedLanguage ?? (() => {
+        let detectedLanguage: LanguageOption = myLanguage;
+        const recentEntries = entriesRef.current.slice(-5);
+        for (const entry of recentEntries) {
+          if (entry.sourceLanguage && entry.sourceLanguage !== myLanguage.code) {
+            detectedLanguage = {
+              code: entry.sourceLanguage,
+              label: entry.sourceLanguage,
+              locale: entry.sourceLanguage,
+            };
+            break;
+          }
         }
-      }
+        return detectedLanguage;
+      })();
 
       try {
         const translation = await translateText({
@@ -495,7 +457,7 @@ export const useConversationController = (roomId: string): ConversationControlle
         setTimeout(() => setStatus('idle'), 1200);
       }
     },
-    [myLanguage, roomId],
+    [forcedLanguage, myLanguage, roomId],
   );
 
   const enableAudio = useCallback(async (): Promise<void> => {

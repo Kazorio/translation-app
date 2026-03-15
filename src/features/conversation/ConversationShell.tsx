@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -11,12 +12,21 @@ import { ConversationLog } from '@/components/conversation/ConversationLog';
 import { LanguageSelector } from '@/components/conversation/LanguageSelector';
 import { MessageInput } from '@/components/conversation/MessageInput';
 import { AutoPlayHint } from '@/components/conversation/AutoPlayHint';
+import type { LanguageOption } from '@/types/conversation';
 
 interface Props {
   roomId: string;
+  fixedLanguage?: LanguageOption;
+  hideLanguageSelector?: boolean;
+  backHref?: Route;
 }
 
-export const ConversationShell = ({ roomId }: Props): JSX.Element => {
+export const ConversationShell = ({
+  roomId,
+  fixedLanguage,
+  hideLanguageSelector = false,
+  backHref = '/',
+}: Props): JSX.Element => {
   const {
     entries,
     errorMessage,
@@ -32,7 +42,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
     blockedAudioIds,
     playBlockedAudio,
     isAudioUnlocked,
-  } = useConversationController(roomId);
+  } = useConversationController(roomId, { forcedLanguage: fixedLanguage });
 
   const [copied, setCopied] = useState(false);
 
@@ -84,7 +94,7 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
         zIndex: 10,
       }}>
         <Link 
-          href="/"
+          href={backHref}
           style={{
             padding: '8px',
             backgroundColor: 'transparent',
@@ -119,16 +129,20 @@ export const ConversationShell = ({ roomId }: Props): JSX.Element => {
           {userCount}
         </motion.div>
         
-        <div style={{ flex: 1, minWidth: '100px', maxWidth: '180px' }}>
-          <LanguageSelector
-            languages={SUPPORTED_LANGUAGES}
-            selected={myLanguage}
-            onChange={(lang) => {
-              updateMyLanguage(lang);
-              if (!audioEnabled) void enableAudio();
-            }}
-          />
-        </div>
+        {hideLanguageSelector ? (
+          <div style={{ flex: 1 }} />
+        ) : (
+          <div style={{ flex: 1, minWidth: '100px', maxWidth: '180px' }}>
+            <LanguageSelector
+              languages={SUPPORTED_LANGUAGES}
+              selected={myLanguage}
+              onChange={(lang) => {
+                updateMyLanguage(lang);
+                if (!audioEnabled) void enableAudio();
+              }}
+            />
+          </div>
+        )}
         
         <motion.button
           whileTap={{ scale: 0.95 }}
